@@ -20,7 +20,9 @@ def get_required_columns():
         'LateStageAmount': (int, float),
         'AvgAge': (int, float),
         'Stage0Age': (int, float),
-        'Stage0Count': (int, float)
+        'Stage0Count': (int, float),
+        'PipelineCreatedQTD': (int, float),
+        'PipelineTargetQTD': (int, float)
     }
 
 def validate_headers(df):
@@ -57,6 +59,13 @@ def generate_synthetic_data(n_records=100):
                    for stage, created in zip(stages_data, created_dates)]
     avg_ages = [(datetime.now() - created).days for created in created_dates]
     
+    # Generate QTD pipeline metrics
+    pipeline_created_qtd = [amt if (datetime.now() - created).days <= 90 else 0 
+                          for amt, created in zip(amounts, created_dates)]
+    # Set target as 20% higher than typical pipeline creation
+    base_target = sum(pipeline_created_qtd) * 1.2
+    pipeline_target_qtd = [base_target / n_records for _ in range(n_records)]
+    
     # Create DataFrame with all required columns
     df = pd.DataFrame({
         'OpportunityID': [f'OPP{i+1:04d}' for i in range(n_records)],
@@ -74,7 +83,9 @@ def generate_synthetic_data(n_records=100):
         'LateStageAmount': late_stage_amount,
         'AvgAge': avg_ages,
         'Stage0Age': stage0_ages,
-        'Stage0Count': stage0_counts
+        'Stage0Count': stage0_counts,
+        'PipelineCreatedQTD': pipeline_created_qtd,
+        'PipelineTargetQTD': pipeline_target_qtd
     })
     
     # Validate the synthetic data
@@ -151,6 +162,10 @@ def get_pipeline_metrics(df):
             'stage_0_count': 0,
             'avg_stage_0_age': 0,
             'pipeline_by_source': {'No Data': 0},
+            'pipeline_created_qtd': 0,
+            'pipeline_target_qtd': 0,
+            'attainment_percentage': 0,
+            'gap_to_target': 0,
             'rep_rankings': pd.DataFrame({
                 'Total Pipeline': [],
                 'Opportunity Count': [],
@@ -169,7 +184,13 @@ def get_pipeline_metrics(df):
         'qualified_pipeline': df[df['Stage'].isin([2, 3, 4])]['Amount'].sum(),
         'stage_0_pipeline': df[df['Stage'] == 0]['Amount'].sum(),
         'stage_0_count': len(df[df['Stage'] == 0]),
+        'pipeline_created_qtd': df['PipelineCreatedQTD'].sum(),
+        'pipeline_target_qtd': df['PipelineTargetQTD'].sum(),
     }
+    
+    # Calculate attainment metrics
+    metrics['attainment_percentage'] = (metrics['pipeline_created_qtd'] / metrics['pipeline_target_qtd'] * 100) if metrics['pipeline_target_qtd'] > 0 else 0
+    metrics['gap_to_target'] = metrics['pipeline_target_qtd'] - metrics['pipeline_created_qtd']
     
     # Safe calculation of average stage 0 age
     stage_0_df = df[df['Stage'] == 0]

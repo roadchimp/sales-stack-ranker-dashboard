@@ -238,6 +238,40 @@ with col4:
         "Time in Prospecting"
     )
 
+# Pipeline Attainment Metrics
+st.subheader("📈 Pipeline Creation & Attainment (QTD)")
+col1, col2, col3 = st.columns(3)
+
+# Calculate QTD metrics
+pipeline_created_qtd = df['PipelineCreatedQTD'].sum()
+pipeline_target_qtd = df['PipelineTargetQTD'].sum()
+attainment_percentage = (pipeline_created_qtd / pipeline_target_qtd * 100) if pipeline_target_qtd > 0 else 0
+gap_to_target = pipeline_target_qtd - pipeline_created_qtd
+
+with col1:
+    st.metric(
+        "Pipeline Created QTD",
+        f"${pipeline_created_qtd:,.0f}",
+        f"vs Target: ${pipeline_target_qtd:,.0f}"
+    )
+
+with col2:
+    st.metric(
+        "Attainment",
+        f"{attainment_percentage:.1f}%",
+        f"Gap: ${gap_to_target:,.0f}"
+    )
+
+with col3:
+    # Calculate daily run rate needed
+    days_left_in_quarter = 90 - (datetime.now() - datetime.now().replace(day=1, month=((datetime.now().month-1)//3)*3+1)).days
+    daily_target = gap_to_target / days_left_in_quarter if days_left_in_quarter > 0 else 0
+    st.metric(
+        "Daily Target to Goal",
+        f"${daily_target:,.0f}",
+        f"{days_left_in_quarter} days left"
+    )
+
 # Pipeline by Source and Stage Distribution
 col1, col2 = st.columns(2)
 
