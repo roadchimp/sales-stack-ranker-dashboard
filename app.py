@@ -287,7 +287,7 @@ except Exception as e:
             st.metric("No Data", "$0", "Error loading metrics")
 
 # Pipeline by Source and Stage Distribution
-col1, col2 = st.columns(2)
+col1, col2, col3 = st.columns(3)
 
 with col1:
     # Pipeline by Source
@@ -321,6 +321,30 @@ with col2:
             labels={'x': 'Stage', 'y': 'Count'}
         )
     st.plotly_chart(fig_stage, use_container_width=True)
+
+with col3:
+    # Late Stage Pipeline Distribution
+    late_stage_data = pd.DataFrame([
+        {'Category': 'Late Stage', 'Amount': metrics['late_stage_pipeline']},
+        {'Category': 'Early Stage', 'Amount': metrics['total_pipeline'] - metrics['late_stage_pipeline']}
+    ])
+    fig_late_stage = go.Figure(data=[go.Pie(
+        labels=late_stage_data['Category'],
+        values=late_stage_data['Amount'],
+        hole=0.7,
+        marker_colors=['#2ecc71', '#e74c3c']
+    )])
+    fig_late_stage.update_layout(
+        title=f"Late Stage Pipeline: {metrics['late_stage_percentage']:.1f}%",
+        annotations=[{
+            'text': f"${metrics['late_stage_pipeline']:,.0f}",
+            'x': 0.5,
+            'y': 0.5,
+            'font_size': 14,
+            'showarrow': False
+        }]
+    )
+    st.plotly_chart(fig_late_stage, use_container_width=True)
 
 # Pipe Health & Stage 0 Detail Table
 st.header("🚦 Pipe Health and Stage 0 Detail")
