@@ -1,9 +1,12 @@
 import streamlit as st
+import openai
 import plotly.express as px
 import plotly.graph_objects as go
 from data_loader import load_data, get_pipeline_metrics, load_csv_data
 import pandas as pd
 from datetime import datetime
+
+openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 # Set page config
 st.set_page_config(
@@ -225,6 +228,24 @@ with col2:
         )
     st.plotly_chart(fig_stage, use_container_width=True)
 
+
+# Pipe Health & Stage 0 Detail Table
+st.header("🚦 Pipe Health and Stage 0 Detail")
+pipe_health_cols = ['Owner', 'Role', 'TotalPipe', 'LateStageAmount', 'AvgAge', 'Stage0Count', 'Stage0Age']
+st.dataframe(df[pipe_health_cols].sort_values(by='TotalPipe', ascending=False))
+
+#Rep Rankings (Qualified Pipe This Quarter)
+st.subheader("Rep Rankings (Qualified Pipe This Quarter)")
+rep_ranking = df.groupby(['Owner', 'Role']).agg({'QualifiedPipeQTD':'sum'}).reset_index()
+rep_ranking = rep_ranking.sort_values(by='QualifiedPipeQTD', ascending=False).reset_index(drop=True)
+rep_ranking.index += 1  # Start rank from 1
+st.dataframe(rep_ranking.rename_axis('Rank').reset_index())
+
+#QTD Pipe Qualification By Lead Source
+st.header("📈 QTD Pipe Qualification By Lead Source")
+pipe_by_leadsource = df.groupby('LeadSourceCategory')['QualifiedPipeQTD'].sum().reset_index()
+st.bar_chart(pipe_by_leadsource.set_index('LeadSourceCategory'))
+
 # Rep Rankings Table
 st.subheader("Rep Rankings")
 if not metrics['rep_rankings'].empty:
@@ -254,6 +275,30 @@ else:
         title='Pipeline Growth Over Time (No Data)'
     )
 st.plotly_chart(fig_trend, use_container_width=True)
+
+def generate_commentary(summary_text):
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": "You are an insightful sales analytics assistant providing concise commentary on sales data."},
+            {"role": "user", "content": f"Provide insightful commentary on this sales data summary: {summary_text}"}
+        ],
+        max_tokens=200,
+        temperature=0.5,
+    )
+    return response.choices[0].message.content
+
+# Generate Summary for Commentary
+summary_text = f"""
+Total Pipeline: {df['Amount'].sum()},
+Qualified Pipeline QTD: {df['QualifiedPipeQTD'].sum()},
+Late Stage Pipeline: {df['LateStageAmount'].sum()},
+Average Stage 0 Age: {df['Stage0Age'].mean():.2f} days
+"""
+
+if st.button("✨ Generate AI Commentary"):
+    commentary = generate_commentary(summary_text)
+    st.markdown(f"**🤖 GenAI Commentary:**\n\n{commentary}")
 
 # Footer with future enhancements
 st.markdown("---")
