@@ -3,9 +3,9 @@ import numpy as np
 from datetime import datetime, timedelta
 import os
 
-def validate_headers(df):
-    """Validate that all required headers are present in the DataFrame."""
-    required_columns = {
+def get_required_columns():
+    """Return a dictionary of required columns and their types."""
+    return {
         'OpportunityID': str,
         'Owner': str,
         'Role': str,
@@ -22,64 +22,14 @@ def validate_headers(df):
         'Stage0Age': (int, float),
         'Stage0Count': (int, float)
     }
-    
+
+def validate_headers(df):
+    """Validate that all required headers are present in the DataFrame."""
+    required_columns = get_required_columns()
     missing_columns = [col for col in required_columns if col not in df.columns]
     if missing_columns:
         raise ValueError(f"Missing required columns: {', '.join(missing_columns)}")
-    
     return required_columns
-
-def clean_and_validate_data(df):
-    """Clean and validate data types and formats."""
-    if df.empty:
-        raise ValueError("CSV file is empty or contains only headers")
-    
-    # Get required columns and their types
-    required_columns = validate_headers(df)
-    
-    # Make a copy to avoid modifying the original DataFrame
-    df = df.copy()
-    
-    # Clean and validate each column
-    try:
-        # Clean OpportunityID (remove any spaces, convert to string)
-        df['OpportunityID'] = df['OpportunityID'].astype(str).str.strip()
-        
-        # Clean text fields
-        for text_col in ['Owner', 'Role', 'Region', 'Source', 'LeadSourceCategory']:
-            df[text_col] = df[text_col].astype(str).str.strip()
-        
-        # Clean and validate dates
-        for date_col in ['CreatedDate', 'CloseDate']:
-            df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
-            if df[date_col].isna().any():
-                bad_dates = df[df[date_col].isna()][date_col].index.tolist()
-                raise ValueError(f"Invalid date format in {date_col} at rows: {bad_dates}")
-        
-        # Clean and validate Stage (must be integer 0-4)
-        df['Stage'] = pd.to_numeric(df['Stage'], errors='coerce')
-        invalid_stages = df[~df['Stage'].isin([0, 1, 2, 3, 4])].index.tolist()
-        if invalid_stages:
-            raise ValueError(f"Invalid Stage values at rows {invalid_stages}. Stage must be between 0 and 4.")
-        
-        # Clean and validate numeric columns
-        numeric_cols = ['Amount', 'QualifiedPipeQTD', 'LateStageAmount', 'AvgAge', 'Stage0Age', 'Stage0Count']
-        for col in numeric_cols:
-            df[col] = pd.to_numeric(df[col], errors='coerce')
-            if df[col].isna().any():
-                bad_values = df[df[col].isna()].index.tolist()
-                raise ValueError(f"Invalid numeric values in {col} at rows: {bad_values}")
-            if col != 'Stage0Count' and (df[col] < 0).any():
-                negative_values = df[df[col] < 0].index.tolist()
-                raise ValueError(f"Negative values found in {col} at rows: {negative_values}")
-        
-        # Remove any rows with all NaN values
-        df = df.dropna(how='all')
-        
-    except Exception as e:
-        raise ValueError(f"Data validation error: {str(e)}")
-    
-    return df
 
 def generate_synthetic_data(n_records=100):
     """Generate synthetic sales pipeline data for testing."""
@@ -103,13 +53,12 @@ def generate_synthetic_data(n_records=100):
                          for amt, stage, created in zip(amounts, stages_data, created_dates)]
     late_stage_amount = [amt if stage >= 3 else 0 for amt, stage in zip(amounts, stages_data)]
     stage0_counts = [1 if stage == 0 else 0 for stage in stages_data]
-    stage0_ages = [
-        (datetime.now() - created).days if stage == 0 else 0 
-        for stage, created in zip(stages_data, created_dates)
-    ]
+    stage0_ages = [(datetime.now() - created).days if stage == 0 else 0 
+                   for stage, created in zip(stages_data, created_dates)]
     avg_ages = [(datetime.now() - created).days for created in created_dates]
     
-    data = {
+    # Create DataFrame with all required columns
+    df = pd.DataFrame({
         'OpportunityID': [f'OPP{i+1:04d}' for i in range(n_records)],
         'Owner': np.random.choice(owners, n_records),
         'Role': np.random.choice(roles, n_records),
@@ -126,26 +75,95 @@ def generate_synthetic_data(n_records=100):
         'AvgAge': avg_ages,
         'Stage0Age': stage0_ages,
         'Stage0Count': stage0_counts
-    }
+    })
     
-    return pd.DataFrame(data)
+    # Validate the synthetic data
+    required_columns = get_required_columns()
+    for col in required_columns:
+        if col not in df.columns:
+            raise ValueError(f"Synthetic data generation failed: missing column {col}")
+    
+    return df
+
+def clean_and_validate_data(df):
+    """Clean and validate data types and formats."""
+    if df.empty:
+        raise ValueError("CSV file is empty or contains only headers")
+    
+    # Get required columns and their types
+    required_columns = validate_headers(df)
+    
+    # Make a copy to avoid modifying the original DataFrame
+    df = df.copy()
+    
+    try:
+        # Clean text fields
+        text_cols = ['OpportunityID', 'Owner', 'Role', 'Region', 'Source', 'LeadSourceCategory']
+        for col in text_cols:
+            df[col] = df[col].astype(str).str.strip()
+        
+        # Clean and validate dates
+        for date_col in ['CreatedDate', 'CloseDate']:
+            df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
+            if df[date_col].isna().any():
+                bad_dates = df[df[date_col].isna()].index.tolist()
+                raise ValueError(f"Invalid date format in {date_col} at rows: {bad_dates}")
+        
+        # Clean and validate Stage (must be integer 0-4)
+        df['Stage'] = pd.to_numeric(df['Stage'], errors='coerce')
+        invalid_stages = df[~df['Stage'].isin([0, 1, 2, 3, 4])].index.tolist()
+        if invalid_stages:
+            raise ValueError(f"Invalid Stage values at rows {invalid_stages}. Stage must be between 0 and 4.")
+        
+        # Clean and validate numeric columns
+        numeric_cols = ['Amount', 'QualifiedPipeQTD', 'LateStageAmount', 'AvgAge', 'Stage0Age', 'Stage0Count']
+        for col in numeric_cols:
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+            if df[col].isna().any():
+                bad_values = df[df[col].isna()].index.tolist()
+                raise ValueError(f"Invalid numeric values in {col} at rows: {bad_values}")
+            if col != 'Stage0Count' and (df[col] < 0).any():
+                negative_values = df[df[col] < 0].index.tolist()
+                raise ValueError(f"Negative values found in {col} at rows: {negative_values}")
+        
+        # Remove any rows with all NaN values
+        df = df.dropna(how='all')
+        
+        # Validate that we still have data after cleaning
+        if df.empty:
+            raise ValueError("No valid data remains after cleaning")
+        
+    except Exception as e:
+        raise ValueError(f"Data validation error: {str(e)}")
+    
+    return df
 
 def load_data():
     """Load data from CSV if exists, otherwise generate synthetic data."""
-    if os.path.exists('data/sales_pipeline.csv'):
-        df = pd.read_csv('data/sales_pipeline.csv')
-        df = clean_and_validate_data(df)  # Validate loaded data
-    else:
-        # Create data directory if it doesn't exist
-        os.makedirs('data', exist_ok=True)
+    try:
+        if os.path.exists('data/sales_pipeline.csv'):
+            df = pd.read_csv('data/sales_pipeline.csv')
+        else:
+            df = generate_synthetic_data()
+            # Create data directory if it doesn't exist
+            os.makedirs('data', exist_ok=True)
+            df.to_csv('data/sales_pipeline.csv', index=False)
+        
+        # Validate and clean the data
+        df = clean_and_validate_data(df)
+        
+        # Convert date columns to datetime
+        df['CreatedDate'] = pd.to_datetime(df['CreatedDate'])
+        df['CloseDate'] = pd.to_datetime(df['CloseDate'])
+        
+        return df
+        
+    except Exception as e:
+        # If anything fails, generate new synthetic data
+        print(f"Error loading data: {str(e)}")
+        print("Generating new synthetic data...")
         df = generate_synthetic_data()
-        df.to_csv('data/sales_pipeline.csv', index=False)
-    
-    # Convert date columns to datetime
-    df['CreatedDate'] = pd.to_datetime(df['CreatedDate'])
-    df['CloseDate'] = pd.to_datetime(df['CloseDate'])
-    
-    return df
+        return df
 
 def load_csv_data(uploaded_file):
     """Load and validate data from uploaded CSV file."""

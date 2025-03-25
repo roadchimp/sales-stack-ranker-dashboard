@@ -1,9 +1,17 @@
 import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
-from data_loader import load_data, get_pipeline_metrics, load_csv_data
+from data_loader import load_data, get_pipeline_metrics, load_csv_data, get_required_columns
 import pandas as pd
 from datetime import datetime
+
+# Initialize session state for data
+if 'df' not in st.session_state:
+    try:
+        st.session_state.df = load_data()
+    except Exception as e:
+        st.error(f"Error loading initial data: {str(e)}")
+        st.session_state.df = pd.DataFrame(columns=get_required_columns().keys())
 
 # Set page config
 st.set_page_config(
