@@ -4,6 +4,21 @@ import plotly.graph_objects as go
 from data_loader import load_data, get_pipeline_metrics, load_csv_data, get_required_columns
 import pandas as pd
 from datetime import datetime
+import openai
+
+openai.api_key = st.secrets["OPENAI_API_KEY"]
+
+def generate_commentary(summary_text):
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": "You are an insightful sales analytics assistant providing concise commentary on sales data."},
+            {"role": "user", "content": f"Provide insightful commentary on this sales data summary: {summary_text}"}
+        ],
+        max_tokens=200,
+        temperature=0.5,
+    )
+    return response.choices[0].message.content
 
 # Initialize session state for data
 if 'df' not in st.session_state:
@@ -149,6 +164,18 @@ try:
 except Exception as e:
     st.error(f"Error calculating metrics: {str(e)}")
     metrics = get_pipeline_metrics(pd.DataFrame(columns=get_required_columns().keys()))
+
+# Generate Summary for Commentary
+summary_text = f"""
+Total Pipeline: {df['Amount'].sum()},
+Qualified Pipeline QTD: {df['QualifiedPipeQTD'].sum()},
+Late Stage Pipeline: {df['LateStageAmount'].sum()},
+Average Stage 0 Age: {df['Stage0Age'].mean():.2f} days
+"""
+
+if st.button("✨ Generate AI Commentary"):
+    commentary = generate_commentary(summary_text)
+    st.markdown(f"**🤖 GenAI Commentary:**\n\n{commentary}")
 
 # Sidebar filters (only show if we have data)
 if not df.empty:
