@@ -8,12 +8,19 @@ def validate_headers(df):
     required_columns = {
         'OpportunityID': str,
         'Owner': str,
+        'Role': str,
         'Region': str,
         'CreatedDate': str,
         'CloseDate': str,
         'Stage': (int, float),
         'Amount': (int, float),
-        'Source': str
+        'Source': str,
+        'LeadSourceCategory': str,
+        'QualifiedPipeQTD': (int, float),
+        'LateStageAmount': (int, float),
+        'AvgAge': (int, float),
+        'Stage0Age': (int, float),
+        'Stage0Count': (int, float)
     }
     
     missing_columns = [col for col in required_columns if col not in df.columns]
@@ -38,9 +45,9 @@ def clean_and_validate_data(df):
         # Clean OpportunityID (remove any spaces, convert to string)
         df['OpportunityID'] = df['OpportunityID'].astype(str).str.strip()
         
-        # Clean Owner and Region (remove extra spaces, ensure string)
-        df['Owner'] = df['Owner'].astype(str).str.strip()
-        df['Region'] = df['Region'].astype(str).str.strip()
+        # Clean text fields
+        for text_col in ['Owner', 'Role', 'Region', 'Source', 'LeadSourceCategory']:
+            df[text_col] = df[text_col].astype(str).str.strip()
         
         # Clean and validate dates
         for date_col in ['CreatedDate', 'CloseDate']:
@@ -55,17 +62,16 @@ def clean_and_validate_data(df):
         if invalid_stages:
             raise ValueError(f"Invalid Stage values at rows {invalid_stages}. Stage must be between 0 and 4.")
         
-        # Clean and validate Amount (must be positive number)
-        df['Amount'] = pd.to_numeric(df['Amount'], errors='coerce')
-        if df['Amount'].isna().any():
-            bad_amounts = df[df['Amount'].isna()].index.tolist()
-            raise ValueError(f"Invalid Amount values at rows: {bad_amounts}")
-        if (df['Amount'] < 0).any():
-            negative_amounts = df[df['Amount'] < 0].index.tolist()
-            raise ValueError(f"Negative Amount values found at rows: {negative_amounts}")
-        
-        # Clean Source (remove extra spaces, ensure string)
-        df['Source'] = df['Source'].astype(str).str.strip()
+        # Clean and validate numeric columns
+        numeric_cols = ['Amount', 'QualifiedPipeQTD', 'LateStageAmount', 'AvgAge', 'Stage0Age', 'Stage0Count']
+        for col in numeric_cols:
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+            if df[col].isna().any():
+                bad_values = df[df[col].isna()].index.tolist()
+                raise ValueError(f"Invalid numeric values in {col} at rows: {bad_values}")
+            if col != 'Stage0Count' and (df[col] < 0).any():
+                negative_values = df[df[col] < 0].index.tolist()
+                raise ValueError(f"Negative values found in {col} at rows: {negative_values}")
         
         # Remove any rows with all NaN values
         df = df.dropna(how='all')
@@ -81,22 +87,45 @@ def generate_synthetic_data(n_records=100):
     
     # Define possible values
     owners = ['Alice Smith', 'Bob Jones', 'Carol White', 'David Brown', 'Emma Wilson']
+    roles = ['Account Executive', 'Senior AE', 'Enterprise AE', 'SMB AE']
     regions = ['West', 'Midwest', 'East', 'South']
     stages = [0, 1, 2, 3, 4]  # 0: Prospecting, 1: Qualification, 2: Proposal, 3: Negotiation, 4: Closed Won
     sources = ['Rep', 'Marketing', 'Partner', 'Website']
+    lead_categories = ['Inbound', 'Outbound', 'Partner', 'Event', 'Referral']
     
-    # Generate data
+    # Generate base data
+    created_dates = [datetime.now() - timedelta(days=np.random.randint(0, 365)) for _ in range(n_records)]
+    stages_data = np.random.choice(stages, n_records)
+    amounts = np.random.randint(10000, 500000, n_records)
+    
+    # Calculate derived fields
+    qualified_pipe_qtd = [amt if stage >= 2 and (datetime.now() - created).days <= 90 else 0 
+                         for amt, stage, created in zip(amounts, stages_data, created_dates)]
+    late_stage_amount = [amt if stage >= 3 else 0 for amt, stage in zip(amounts, stages_data)]
+    stage0_counts = [1 if stage == 0 else 0 for stage in stages_data]
+    stage0_ages = [
+        (datetime.now() - created).days if stage == 0 else 0 
+        for stage, created in zip(stages_data, created_dates)
+    ]
+    avg_ages = [(datetime.now() - created).days for created in created_dates]
+    
     data = {
-        'OpportunityID': range(1, n_records + 1),
+        'OpportunityID': [f'OPP{i+1:04d}' for i in range(n_records)],
         'Owner': np.random.choice(owners, n_records),
+        'Role': np.random.choice(roles, n_records),
         'Region': np.random.choice(regions, n_records),
-        'CreatedDate': [(datetime.now() - timedelta(days=np.random.randint(0, 365))).strftime('%Y-%m-%d') 
-                       for _ in range(n_records)],
-        'CloseDate': [(datetime.now() + timedelta(days=np.random.randint(30, 365))).strftime('%Y-%m-%d') 
-                     for _ in range(n_records)],
-        'Stage': np.random.choice(stages, n_records),
-        'Amount': np.random.randint(10000, 500000, n_records),
-        'Source': np.random.choice(sources, n_records)
+        'CreatedDate': [d.strftime('%Y-%m-%d') for d in created_dates],
+        'CloseDate': [(d + timedelta(days=np.random.randint(30, 180))).strftime('%Y-%m-%d') 
+                     for d in created_dates],
+        'Stage': stages_data,
+        'Amount': amounts,
+        'Source': np.random.choice(sources, n_records),
+        'LeadSourceCategory': np.random.choice(lead_categories, n_records),
+        'QualifiedPipeQTD': qualified_pipe_qtd,
+        'LateStageAmount': late_stage_amount,
+        'AvgAge': avg_ages,
+        'Stage0Age': stage0_ages,
+        'Stage0Count': stage0_counts
     }
     
     return pd.DataFrame(data)
@@ -182,18 +211,22 @@ def get_pipeline_metrics(df):
     
     # Calculate rep rankings with safe calculations
     if not df.empty:
-        rep_rankings = df.groupby('Owner').agg({
+        rep_rankings = df.groupby(['Owner', 'Role']).agg({
             'Amount': ['sum', 'count'],
-            'Stage': lambda x: (x >= 2).mean() * 100 if len(x) > 0 else 0
+            'Stage': lambda x: (x >= 2).mean() * 100 if len(x) > 0 else 0,
+            'QualifiedPipeQTD': 'sum',
+            'LateStageAmount': 'sum',
+            'Stage0Count': 'sum',
+            'Stage0Age': 'mean'
         }).round(2)
-        rep_rankings.columns = ['Total Pipeline', 'Opportunity Count', 'Qualification Rate']
+        
+        # Flatten column names
+        rep_rankings.columns = ['Total Pipeline', 'Opportunity Count', 'Qualification Rate', 
+                              'Qualified Pipeline QTD', 'Late Stage Amount', 'Stage 0 Count', 'Stage 0 Age']
         rep_rankings = rep_rankings.sort_values('Total Pipeline', ascending=False)
     else:
-        rep_rankings = pd.DataFrame({
-            'Total Pipeline': [],
-            'Opportunity Count': [],
-            'Qualification Rate': []
-        })
+        rep_rankings = pd.DataFrame(columns=['Total Pipeline', 'Opportunity Count', 'Qualification Rate',
+                                           'Qualified Pipeline QTD', 'Late Stage Amount', 'Stage 0 Count', 'Stage 0 Age'])
     
     metrics['rep_rankings'] = rep_rankings
     

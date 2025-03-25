@@ -1,12 +1,9 @@
 import streamlit as st
-import openai
 import plotly.express as px
 import plotly.graph_objects as go
 from data_loader import load_data, get_pipeline_metrics, load_csv_data
 import pandas as pd
 from datetime import datetime
-
-openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 # Set page config
 st.set_page_config(
@@ -59,24 +56,38 @@ st.sidebar.markdown("""
 Your CSV should include these columns:
 - OpportunityID (text)
 - Owner (text)
+- Role (text)
 - Region (text)
 - CreatedDate (YYYY-MM-DD)
 - CloseDate (YYYY-MM-DD)
 - Stage (0-4)
 - Amount (positive number)
 - Source (text)
+- LeadSourceCategory (text)
+- QualifiedPipeQTD (number)
+- LateStageAmount (number)
+- AvgAge (number)
+- Stage0Age (number)
+- Stage0Count (number)
 """)
 
 # Generate sample data for template
 sample_df = pd.DataFrame({
     'OpportunityID': ['OPP001', 'OPP002'],
     'Owner': ['John Doe', 'Jane Smith'],
+    'Role': ['Account Executive', 'Senior AE'],
     'Region': ['West', 'East'],
     'CreatedDate': ['2024-01-01', '2024-01-02'],
     'CloseDate': ['2024-03-01', '2024-03-02'],
     'Stage': [0, 1],
     'Amount': [50000, 75000],
-    'Source': ['Rep', 'Marketing']
+    'Source': ['Rep', 'Marketing'],
+    'LeadSourceCategory': ['Inbound', 'Outbound'],
+    'QualifiedPipeQTD': [0, 75000],
+    'LateStageAmount': [0, 0],
+    'AvgAge': [30, 45],
+    'Stage0Age': [30, 0],
+    'Stage0Count': [1, 0]
 })
 
 # Convert sample DataFrame to CSV
@@ -228,34 +239,37 @@ with col2:
         )
     st.plotly_chart(fig_stage, use_container_width=True)
 
-
 # Pipe Health & Stage 0 Detail Table
 st.header("🚦 Pipe Health and Stage 0 Detail")
-pipe_health_cols = ['Owner', 'Role', 'TotalPipe', 'LateStageAmount', 'AvgAge', 'Stage0Count', 'Stage0Age']
-st.dataframe(df[pipe_health_cols].sort_values(by='TotalPipe', ascending=False))
+pipe_health_cols = ['Owner', 'Role', 'Amount', 'LateStageAmount', 'AvgAge', 'Stage0Count', 'Stage0Age']
+pipe_health_df = df[pipe_health_cols].groupby(['Owner', 'Role']).agg({
+    'Amount': 'sum',
+    'LateStageAmount': 'sum',
+    'AvgAge': 'mean',
+    'Stage0Count': 'sum',
+    'Stage0Age': 'mean'
+}).round(2).reset_index()
+pipe_health_df = pipe_health_df.sort_values('Amount', ascending=False)
+st.dataframe(pipe_health_df, use_container_width=True)
 
-#Rep Rankings (Qualified Pipe This Quarter)
+# Rep Rankings (Qualified Pipe This Quarter)
 st.subheader("Rep Rankings (Qualified Pipe This Quarter)")
-rep_ranking = df.groupby(['Owner', 'Role']).agg({'QualifiedPipeQTD':'sum'}).reset_index()
-rep_ranking = rep_ranking.sort_values(by='QualifiedPipeQTD', ascending=False).reset_index(drop=True)
+rep_ranking = df.groupby(['Owner', 'Role'])['QualifiedPipeQTD'].sum().reset_index()
+rep_ranking = rep_ranking.sort_values('QualifiedPipeQTD', ascending=False).reset_index(drop=True)
 rep_ranking.index += 1  # Start rank from 1
-st.dataframe(rep_ranking.rename_axis('Rank').reset_index())
+st.dataframe(rep_ranking.rename_axis('Rank').reset_index(), use_container_width=True)
 
-#QTD Pipe Qualification By Lead Source
+# QTD Pipe Qualification By Lead Source
 st.header("📈 QTD Pipe Qualification By Lead Source")
 pipe_by_leadsource = df.groupby('LeadSourceCategory')['QualifiedPipeQTD'].sum().reset_index()
-st.bar_chart(pipe_by_leadsource.set_index('LeadSourceCategory'))
-
-# Rep Rankings Table
-st.subheader("Rep Rankings")
-if not metrics['rep_rankings'].empty:
-    st.dataframe(
-        metrics['rep_rankings'],
-        use_container_width=True,
-        hide_index=True
-    )
-else:
-    st.info("No rep data available.")
+fig_leadsource = px.bar(
+    pipe_by_leadsource,
+    x='LeadSourceCategory',
+    y='QualifiedPipeQTD',
+    title='Qualified Pipeline by Lead Source Category',
+    labels={'LeadSourceCategory': 'Lead Source', 'QualifiedPipeQTD': 'Qualified Pipeline'}
+)
+st.plotly_chart(fig_leadsource, use_container_width=True)
 
 # Pipeline Trend
 st.subheader("Pipeline Trend")
@@ -275,30 +289,6 @@ else:
         title='Pipeline Growth Over Time (No Data)'
     )
 st.plotly_chart(fig_trend, use_container_width=True)
-
-def generate_commentary(summary_text):
-    response = openai.ChatCompletion.create(
-        model="gpt-4",
-        messages=[
-            {"role": "system", "content": "You are an insightful sales analytics assistant providing concise commentary on sales data."},
-            {"role": "user", "content": f"Provide insightful commentary on this sales data summary: {summary_text}"}
-        ],
-        max_tokens=200,
-        temperature=0.5,
-    )
-    return response.choices[0].message.content
-
-# Generate Summary for Commentary
-summary_text = f"""
-Total Pipeline: {df['Amount'].sum()},
-Qualified Pipeline QTD: {df['QualifiedPipeQTD'].sum()},
-Late Stage Pipeline: {df['LateStageAmount'].sum()},
-Average Stage 0 Age: {df['Stage0Age'].mean():.2f} days
-"""
-
-if st.button("✨ Generate AI Commentary"):
-    commentary = generate_commentary(summary_text)
-    st.markdown(f"**🤖 GenAI Commentary:**\n\n{commentary}")
 
 # Footer with future enhancements
 st.markdown("---")
