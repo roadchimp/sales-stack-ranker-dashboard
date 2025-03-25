@@ -9,8 +9,10 @@ from datetime import datetime
 if 'df' not in st.session_state:
     try:
         st.session_state.df = load_data()
+        if st.session_state.df.empty:
+            st.error("Error: Unable to load or generate data. Please check the logs for details.")
     except Exception as e:
-        st.error(f"Error loading initial data: {str(e)}")
+        st.error(f"Error initializing data: {str(e)}")
         st.session_state.df = pd.DataFrame(columns=get_required_columns().keys())
 
 # Set page config
@@ -113,6 +115,7 @@ uploaded_file = st.sidebar.file_uploader("Upload your own CSV file (optional)", 
 if uploaded_file is not None:
     try:
         df = load_csv_data(uploaded_file)
+        st.session_state.df = df
         st.sidebar.success("✅ Custom data loaded successfully!")
         
         # Show data preview with validation message
@@ -129,31 +132,23 @@ if uploaded_file is not None:
             st.sidebar.dataframe(df.head(), use_container_width=True)
             
     except ValueError as e:
-        st.sidebar.markdown(f"""
-        <div class="error-message">
-        ⚠️ Error in uploaded CSV:
-        {str(e)}
-        <br><br>
-        Using synthetic data instead.
-        </div>
-        """, unsafe_allow_html=True)
-        df = load_data()
+        st.sidebar.error(f"⚠️ Error in uploaded CSV: {str(e)}")
+        if st.session_state.df.empty:
+            st.session_state.df = load_data()
     except Exception as e:
-        st.sidebar.markdown(f"""
-        <div class="error-message">
-        ⚠️ Unexpected error:
-        {str(e)}
-        <br><br>
-        Using synthetic data instead.
-        </div>
-        """, unsafe_allow_html=True)
-        df = load_data()
-else:
-    df = load_data()  # Use synthetic data by default
-    st.sidebar.info("ℹ️ Using synthetic data. Upload your CSV file to use custom data.")
+        st.sidebar.error(f"⚠️ Unexpected error: {str(e)}")
+        if st.session_state.df.empty:
+            st.session_state.df = load_data()
 
-# Calculate metrics
-metrics = get_pipeline_metrics(df)
+# Use the session state DataFrame
+df = st.session_state.df
+
+# Calculate metrics (with error handling)
+try:
+    metrics = get_pipeline_metrics(df)
+except Exception as e:
+    st.error(f"Error calculating metrics: {str(e)}")
+    metrics = get_pipeline_metrics(pd.DataFrame(columns=get_required_columns().keys()))
 
 # Sidebar filters (only show if we have data)
 if not df.empty:

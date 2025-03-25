@@ -138,51 +138,6 @@ def clean_and_validate_data(df):
     
     return df
 
-def load_data():
-    """Load data from CSV if exists, otherwise generate synthetic data."""
-    try:
-        if os.path.exists('data/sales_pipeline.csv'):
-            df = pd.read_csv('data/sales_pipeline.csv')
-        else:
-            df = generate_synthetic_data()
-            # Create data directory if it doesn't exist
-            os.makedirs('data', exist_ok=True)
-            df.to_csv('data/sales_pipeline.csv', index=False)
-        
-        # Validate and clean the data
-        df = clean_and_validate_data(df)
-        
-        # Convert date columns to datetime
-        df['CreatedDate'] = pd.to_datetime(df['CreatedDate'])
-        df['CloseDate'] = pd.to_datetime(df['CloseDate'])
-        
-        return df
-        
-    except Exception as e:
-        # If anything fails, generate new synthetic data
-        print(f"Error loading data: {str(e)}")
-        print("Generating new synthetic data...")
-        df = generate_synthetic_data()
-        return df
-
-def load_csv_data(uploaded_file):
-    """Load and validate data from uploaded CSV file."""
-    try:
-        # First, try to read the CSV file
-        df = pd.read_csv(uploaded_file)
-        
-        # Validate and clean the data
-        df = clean_and_validate_data(df)
-        
-        return df
-        
-    except pd.errors.EmptyDataError:
-        raise ValueError("The uploaded CSV file is empty")
-    except pd.errors.ParserError:
-        raise ValueError("Unable to parse the CSV file. Please ensure it's a valid CSV format.")
-    except Exception as e:
-        raise ValueError(f"Error processing CSV file: {str(e)}")
-
 def get_pipeline_metrics(df):
     """Calculate key pipeline metrics with proper handling of empty DataFrames."""
     # Handle empty DataFrame
@@ -219,7 +174,14 @@ def get_pipeline_metrics(df):
     # Safe calculation of average stage 0 age
     stage_0_df = df[df['Stage'] == 0]
     if not stage_0_df.empty:
-        metrics['avg_stage_0_age'] = (datetime.now() - stage_0_df['CreatedDate']).mean().days
+        try:
+            # Ensure CreatedDate is datetime
+            stage_0_df['CreatedDate'] = pd.to_datetime(stage_0_df['CreatedDate'])
+            age_days = (pd.Timestamp.now() - stage_0_df['CreatedDate']).dt.days
+            metrics['avg_stage_0_age'] = age_days.mean()
+        except Exception as e:
+            print(f"Error calculating stage 0 age: {str(e)}")
+            metrics['avg_stage_0_age'] = 0
     else:
         metrics['avg_stage_0_age'] = 0
     
@@ -229,23 +191,63 @@ def get_pipeline_metrics(df):
     
     # Calculate rep rankings with safe calculations
     if not df.empty:
-        rep_rankings = df.groupby(['Owner', 'Role']).agg({
-            'Amount': ['sum', 'count'],
-            'Stage': lambda x: (x >= 2).mean() * 100 if len(x) > 0 else 0,
-            'QualifiedPipeQTD': 'sum',
-            'LateStageAmount': 'sum',
-            'Stage0Count': 'sum',
-            'Stage0Age': 'mean'
-        }).round(2)
-        
-        # Flatten column names
-        rep_rankings.columns = ['Total Pipeline', 'Opportunity Count', 'Qualification Rate', 
-                              'Qualified Pipeline QTD', 'Late Stage Amount', 'Stage 0 Count', 'Stage 0 Age']
-        rep_rankings = rep_rankings.sort_values('Total Pipeline', ascending=False)
+        try:
+            rep_rankings = df.groupby(['Owner', 'Role']).agg({
+                'Amount': ['sum', 'count'],
+                'Stage': lambda x: (x >= 2).mean() * 100 if len(x) > 0 else 0,
+                'QualifiedPipeQTD': 'sum',
+                'LateStageAmount': 'sum',
+                'Stage0Count': 'sum',
+                'Stage0Age': 'mean'
+            }).round(2)
+            
+            # Flatten column names
+            rep_rankings.columns = ['Total Pipeline', 'Opportunity Count', 'Qualification Rate', 
+                                  'Qualified Pipeline QTD', 'Late Stage Amount', 'Stage 0 Count', 'Stage 0 Age']
+            rep_rankings = rep_rankings.sort_values('Total Pipeline', ascending=False)
+        except Exception as e:
+            print(f"Error calculating rep rankings: {str(e)}")
+            rep_rankings = pd.DataFrame(columns=['Total Pipeline', 'Opportunity Count', 'Qualification Rate',
+                                               'Qualified Pipeline QTD', 'Late Stage Amount', 'Stage 0 Count', 'Stage 0 Age'])
     else:
         rep_rankings = pd.DataFrame(columns=['Total Pipeline', 'Opportunity Count', 'Qualification Rate',
                                            'Qualified Pipeline QTD', 'Late Stage Amount', 'Stage 0 Count', 'Stage 0 Age'])
     
     metrics['rep_rankings'] = rep_rankings
     
-    return metrics 
+    return metrics
+
+def load_data():
+    """Load data from CSV if exists, otherwise generate synthetic data."""
+    try:
+        # Always generate fresh synthetic data for now
+        df = generate_synthetic_data()
+        
+        # Convert date columns to datetime
+        df['CreatedDate'] = pd.to_datetime(df['CreatedDate'])
+        df['CloseDate'] = pd.to_datetime(df['CloseDate'])
+        
+        return df
+        
+    except Exception as e:
+        print(f"Error generating synthetic data: {str(e)}")
+        # Return empty DataFrame with correct columns
+        return pd.DataFrame(columns=get_required_columns().keys())
+
+def load_csv_data(uploaded_file):
+    """Load and validate data from uploaded CSV file."""
+    try:
+        # First, try to read the CSV file
+        df = pd.read_csv(uploaded_file)
+        
+        # Validate and clean the data
+        df = clean_and_validate_data(df)
+        
+        return df
+        
+    except pd.errors.EmptyDataError:
+        raise ValueError("The uploaded CSV file is empty")
+    except pd.errors.ParserError:
+        raise ValueError("Unable to parse the CSV file. Please ensure it's a valid CSV format.")
+    except Exception as e:
+        raise ValueError(f"Error processing CSV file: {str(e)}") 
