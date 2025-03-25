@@ -99,6 +99,8 @@ Your CSV should include these columns:
 - AvgAge (number)
 - Stage0Age (number)
 - Stage0Count (number)
+- PipelineCreatedQTD (number)
+- PipelineTargetQTD (number)
 """)
 
 # Generate sample data for template
@@ -117,7 +119,9 @@ sample_df = pd.DataFrame({
     'LateStageAmount': [0, 0],
     'AvgAge': [30, 45],
     'Stage0Age': [30, 0],
-    'Stage0Count': [1, 0]
+    'Stage0Count': [1, 0],
+    'PipelineCreatedQTD': [50000, 75000],
+    'PipelineTargetQTD': [60000, 90000]
 })
 
 # Convert sample DataFrame to CSV
@@ -172,10 +176,13 @@ except Exception as e:
 
 # Generate Summary for Commentary
 summary_text = f"""
-Total Pipeline: {df['Amount'].sum()},
-Qualified Pipeline QTD: {df['QualifiedPipeQTD'].sum()},
-Late Stage Pipeline: {df['LateStageAmount'].sum()},
-Average Stage 0 Age: {df['Stage0Age'].mean():.2f} days
+Total Pipeline: ${df['Amount'].sum():,.0f},
+Qualified Pipeline QTD: ${df['QualifiedPipeQTD'].sum():,.0f},
+Late Stage Pipeline: ${df['LateStageAmount'].sum():,.0f},
+Average Stage 0 Age: {df['Stage0Age'].mean():.2f} days,
+Pipeline Created QTD: ${df['PipelineCreatedQTD'].sum():,.0f},
+Pipeline Target QTD: ${df['PipelineTargetQTD'].sum():,.0f},
+Pipeline Attainment: {(df['PipelineCreatedQTD'].sum() / df['PipelineTargetQTD'].sum() * 100 if df['PipelineTargetQTD'].sum() > 0 else 0):.1f}%
 """
 
 if st.button("✨ Generate AI Commentary"):
@@ -242,35 +249,42 @@ with col4:
 st.subheader("📈 Pipeline Creation & Attainment (QTD)")
 col1, col2, col3 = st.columns(3)
 
-# Calculate QTD metrics
-pipeline_created_qtd = df['PipelineCreatedQTD'].sum()
-pipeline_target_qtd = df['PipelineTargetQTD'].sum()
-attainment_percentage = (pipeline_created_qtd / pipeline_target_qtd * 100) if pipeline_target_qtd > 0 else 0
-gap_to_target = pipeline_target_qtd - pipeline_created_qtd
+try:
+    # Calculate QTD metrics using filtered data
+    pipeline_created_qtd = filtered_df['PipelineCreatedQTD'].sum()
+    pipeline_target_qtd = filtered_df['PipelineTargetQTD'].sum()
+    attainment_percentage = (pipeline_created_qtd / pipeline_target_qtd * 100) if pipeline_target_qtd > 0 else 0
+    gap_to_target = pipeline_target_qtd - pipeline_created_qtd
 
-with col1:
-    st.metric(
-        "Pipeline Created QTD",
-        f"${pipeline_created_qtd:,.0f}",
-        f"vs Target: ${pipeline_target_qtd:,.0f}"
-    )
+    with col1:
+        st.metric(
+            "Pipeline Created QTD",
+            f"${pipeline_created_qtd:,.0f}",
+            f"vs Target: ${pipeline_target_qtd:,.0f}"
+        )
 
-with col2:
-    st.metric(
-        "Attainment",
-        f"{attainment_percentage:.1f}%",
-        f"Gap: ${gap_to_target:,.0f}"
-    )
+    with col2:
+        st.metric(
+            "Attainment",
+            f"{attainment_percentage:.1f}%",
+            f"Gap: ${gap_to_target:,.0f}"
+        )
 
-with col3:
-    # Calculate daily run rate needed
-    days_left_in_quarter = 90 - (datetime.now() - datetime.now().replace(day=1, month=((datetime.now().month-1)//3)*3+1)).days
-    daily_target = gap_to_target / days_left_in_quarter if days_left_in_quarter > 0 else 0
-    st.metric(
-        "Daily Target to Goal",
-        f"${daily_target:,.0f}",
-        f"{days_left_in_quarter} days left"
-    )
+    with col3:
+        # Calculate daily run rate needed
+        days_left_in_quarter = 90 - (datetime.now() - datetime.now().replace(day=1, month=((datetime.now().month-1)//3)*3+1)).days
+        daily_target = gap_to_target / days_left_in_quarter if days_left_in_quarter > 0 else 0
+        st.metric(
+            "Daily Target to Goal",
+            f"${daily_target:,.0f}",
+            f"{days_left_in_quarter} days left"
+        )
+except Exception as e:
+    st.error(f"Error calculating pipeline attainment metrics: {str(e)}")
+    # Display empty metrics if there's an error
+    for col in [col1, col2, col3]:
+        with col:
+            st.metric("No Data", "$0", "Error loading metrics")
 
 # Pipeline by Source and Stage Distribution
 col1, col2 = st.columns(2)

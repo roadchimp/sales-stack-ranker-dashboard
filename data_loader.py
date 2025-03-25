@@ -127,13 +127,16 @@ def clean_and_validate_data(df):
             raise ValueError(f"Invalid Stage values at rows {invalid_stages}. Stage must be between 0 and 4.")
         
         # Clean and validate numeric columns
-        numeric_cols = ['Amount', 'QualifiedPipeQTD', 'LateStageAmount', 'AvgAge', 'Stage0Age', 'Stage0Count']
+        numeric_cols = [
+            'Amount', 'QualifiedPipeQTD', 'LateStageAmount', 'AvgAge', 
+            'Stage0Age', 'Stage0Count', 'PipelineCreatedQTD', 'PipelineTargetQTD'
+        ]
         for col in numeric_cols:
             df[col] = pd.to_numeric(df[col], errors='coerce')
             if df[col].isna().any():
                 bad_values = df[df[col].isna()].index.tolist()
                 raise ValueError(f"Invalid numeric values in {col} at rows: {bad_values}")
-            if col != 'Stage0Count' and (df[col] < 0).any():
+            if col not in ['Stage0Count'] and (df[col] < 0).any():
                 negative_values = df[df[col] < 0].index.tolist()
                 raise ValueError(f"Negative values found in {col} at rows: {negative_values}")
         
