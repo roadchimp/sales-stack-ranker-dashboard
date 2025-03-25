@@ -6,19 +6,26 @@ import pandas as pd
 from datetime import datetime
 from openai import OpenAI
 
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+# Initialize OpenAI client with just the API key
+client = OpenAI(
+    api_key=st.secrets["OPENAI_API_KEY"]
+)
 
 def generate_commentary(summary_text):
-    response = client.chat.completions.create(
-        model="gpt-4",
-        messages=[
-            {"role": "system", "content": "You are an insightful sales analytics assistant providing concise commentary on sales data."},
-            {"role": "user", "content": f"Provide insightful commentary on this sales data summary: {summary_text}"}
-        ],
-        max_tokens=200,
-        temperature=0.5,
-    )
-    return response.choices[0].message.content
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You are an insightful sales analytics assistant providing concise commentary on sales data."},
+                {"role": "user", "content": f"Provide insightful commentary on this sales data summary: {summary_text}"}
+            ],
+            max_tokens=200,
+            temperature=0.5,
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        st.error(f"Error generating commentary: {str(e)}")
+        return "Unable to generate commentary at this time."
 
 # Initialize session state for data
 if 'df' not in st.session_state:
