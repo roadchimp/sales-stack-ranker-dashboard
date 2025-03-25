@@ -34,8 +34,22 @@ st.markdown("""
     Track key metrics, rep performance, and pipeline health at a glance.
 """)
 
-# Load data
-df = load_data()
+# CSV Data Loader in Sidebar
+st.sidebar.header("Data Source")
+uploaded_file = st.sidebar.file_uploader("Upload your own CSV file (optional)", type=["csv"])
+
+# Load and process data
+if uploaded_file is not None:
+    try:
+        df = load_csv_data(uploaded_file)
+        st.sidebar.success("✅ Custom data loaded successfully!")
+    except Exception as e:
+        st.sidebar.error(f"Error loading CSV: {str(e)}")
+        df = load_data()  # Fallback to synthetic data
+else:
+    df = load_data()  # Use synthetic data by default
+
+# Calculate metrics
 metrics = get_pipeline_metrics(df)
 
 # Sidebar filters
@@ -138,20 +152,7 @@ fig_trend = px.line(
 )
 st.plotly_chart(fig_trend, use_container_width=True)
 
-#CSV Dataloader
-st.sidebar.header("CSV Data Loader")
-uploaded_file = st.sidebar.file_uploader("Upload a CSV file", type=["csv"])
-
-if uploaded_file is not None:
-    df = load_csv_data(uploaded_file)
-    st.dataframe(df, use_container_width=True)
-    st.success("CSV file uploaded successfully!")
-else:
-    st.info("Please upload a CSV file to continue")
-    st.stop()
-
-#Footer with future enhancements
-
+# Footer with future enhancements
 st.markdown("---")
 st.markdown("""
     ### Future Enhancements
