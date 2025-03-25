@@ -1,7 +1,7 @@
 import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
-from data_loader import load_data, get_pipeline_metrics
+from data_loader import load_data, get_pipeline_metrics, load_csv_data
 import pandas as pd
 from datetime import datetime
 
@@ -138,7 +138,20 @@ fig_trend = px.line(
 )
 st.plotly_chart(fig_trend, use_container_width=True)
 
-# Footer with future enhancements
+#CSV Dataloader
+st.sidebar.header("CSV Data Loader")
+uploaded_file = st.sidebar.file_uploader("Upload a CSV file", type=["csv"])
+
+if uploaded_file is not None:
+    df = load_csv_data(uploaded_file)
+    st.dataframe(df, use_container_width=True)
+    st.success("CSV file uploaded successfully!")
+else:
+    st.info("Please upload a CSV file to continue")
+    st.stop()
+
+#Footer with future enhancements
+
 st.markdown("---")
 st.markdown("""
     ### Future Enhancements

@@ -43,6 +43,11 @@ def load_data():
     df['CreatedDate'] = pd.to_datetime(df['CreatedDate'])
     df['CloseDate'] = pd.to_datetime(df['CloseDate'])
     
+    return df 
+
+def load_csv_data(uploaded_file):
+    """Load data from uploaded CSV file."""
+    df = pd.read_csv(uploaded_file, parse_dates=['CreatedDate', 'CloseDate'])
     return df
 
 def get_pipeline_metrics(df):
