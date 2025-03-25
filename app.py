@@ -4,16 +4,14 @@ import plotly.graph_objects as go
 from data_loader import load_data, get_pipeline_metrics, load_csv_data, get_required_columns
 import pandas as pd
 from datetime import datetime
-from openai import OpenAI
+import openai
 
 # Initialize OpenAI client with just the API key
-client = OpenAI(
-    api_key=st.secrets["OPENAI_API_KEY"]
-)
+openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 def generate_commentary(summary_text):
     try:
-        response = client.chat.completions.create(
+        response = openai.ChatCompletion.create(
             model="gpt-4",
             messages=[
                 {"role": "system", "content": "You are an insightful sales analytics assistant providing concise commentary on sales data."},
