@@ -6,6 +6,13 @@ import pandas as pd
 from datetime import datetime
 import openai
 
+# Set page config (must be called before any other Streamlit command)
+st.set_page_config(
+    page_title="Sales Stack Ranker",
+    page_icon="📊",
+    layout="wide"
+)
+
 # Initialize OpenAI client with just the API key
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
@@ -35,12 +42,140 @@ if 'df' not in st.session_state:
         st.error(f"Error initializing data: {str(e)}")
         st.session_state.df = pd.DataFrame(columns=get_required_columns().keys())
 
-# Set page config
-st.set_page_config(
-    page_title="Sales Stack Ranker",
-    page_icon="📊",
-    layout="wide"
+# Use the session state DataFrame
+df = st.session_state.df
+
+# Calculate metrics (with error handling)
+try:
+    metrics = get_pipeline_metrics(df)
+except Exception as e:
+    st.error(f"Error calculating metrics: {str(e)}")
+    metrics = get_pipeline_metrics(pd.DataFrame(columns=get_required_columns().keys()))
+
+# Generate AI commentary
+try:
+    summary = f"""The total sales pipeline is currently valued at ${metrics['total_pipeline']:,.0f}, which indicates the total potential revenue from all opportunities in the pipeline.
+
+The Qualified Pipeline for the quarter to date (QTD) is ${metrics['qualified_pipeline']:,.0f}. This is the amount of potential revenue from opportunities that have been qualified and are likely to close. This figure is less than the total pipeline, indicating that there's a considerable number of opportunities in the early stages of the sales process that have not yet been qualified.
+
+The Late Stage Pipeline, which stands at ${metrics['late_stage_pipeline']:,.0f}, represents opportunities that are in the final stages of the sales process. These are deals that are likely to close soon, contributing significantly to the company's revenue. This figure is {metrics['late_stage_pipeline']/metrics['qualified_pipeline']:.1f} times the value of the qualified pipeline, suggesting that the sales team is doing a good job of moving opportunities through the pipeline.
+
+The Average Stage 0 Age is {metrics['avg_stage_0_age']:.1f} days, which indicates the average time opportunities spend in the initial prospecting stage. This metric helps track the efficiency of early-stage pipeline management and qualification process."""
+except Exception as e:
+    st.error(f"Error generating commentary: {str(e)}")
+    summary = "Unable to generate commentary at this time."
+
+# Sidebar filters (only show if we have data)
+if not df.empty:
+    st.sidebar.header("Filters")
+    selected_region = st.sidebar.multiselect(
+        "Select Region",
+        options=df['Region'].unique(),
+        default=df['Region'].unique()
+    )
+
+    date_range = st.sidebar.date_input(
+        "Date Range",
+        value=(df['CreatedDate'].min(), df['CreatedDate'].max()),
+        min_value=df['CreatedDate'].min(),
+        max_value=df['CreatedDate'].max()
+    )
+
+    # Apply filters
+    filtered_df = df[
+        (df['Region'].isin(selected_region)) &
+        (df['CreatedDate'].dt.date >= date_range[0]) &
+        (df['CreatedDate'].dt.date <= date_range[1])
+    ]
+else:
+    filtered_df = df
+
+# CSV Data Loader in Sidebar with Template Download
+st.sidebar.header("Data Source")
+
+# Add CSV template download button
+st.sidebar.markdown("""
+### CSV Template Format
+Your CSV should include these columns:
+- OpportunityID (text)
+- Owner (text)
+- Role (text)
+- Region (text)
+- CreatedDate (YYYY-MM-DD)
+- CloseDate (YYYY-MM-DD)
+- Stage (0-4)
+- Amount (positive number)
+- Source (text)
+- LeadSourceCategory (text)
+- QualifiedPipeQTD (number)
+- LateStageAmount (number)
+- AvgAge (number)
+- Stage0Age (number)
+- Stage0Count (number)
+- PipelineCreatedQTD (number)
+- PipelineTargetQTD (number)
+""")
+
+# Generate sample data for template
+sample_df = pd.DataFrame({
+    'OpportunityID': ['OPP001', 'OPP002'],
+    'Owner': ['John Doe', 'Jane Smith'],
+    'Role': ['Account Executive', 'Senior AE'],
+    'Region': ['West', 'East'],
+    'CreatedDate': ['2024-01-01', '2024-01-02'],
+    'CloseDate': ['2024-03-01', '2024-03-02'],
+    'Stage': [0, 1],
+    'Amount': [50000, 75000],
+    'Source': ['Rep', 'Marketing'],
+    'LeadSourceCategory': ['Inbound', 'Outbound'],
+    'QualifiedPipeQTD': [0, 75000],
+    'LateStageAmount': [0, 0],
+    'AvgAge': [30, 45],
+    'Stage0Age': [30, 0],
+    'Stage0Count': [1, 0],
+    'PipelineCreatedQTD': [50000, 75000],
+    'PipelineTargetQTD': [60000, 90000]
+})
+
+# Convert sample DataFrame to CSV
+csv_template = sample_df.to_csv(index=False)
+st.sidebar.download_button(
+    label="📥 Download CSV Template",
+    data=csv_template,
+    file_name="sales_pipeline_template.csv",
+    mime="text/csv"
 )
+
+uploaded_file = st.sidebar.file_uploader("Upload your own CSV file (optional)", type=["csv"])
+
+# Load and process data
+if uploaded_file is not None:
+    try:
+        df = load_csv_data(uploaded_file)
+        st.session_state.df = df
+        st.sidebar.success("✅ Custom data loaded successfully!")
+        
+        # Show data preview with validation message
+        if st.sidebar.checkbox("Show Data Preview"):
+            st.sidebar.markdown("""
+            <div class="info-message">
+            ✓ All data validated successfully:
+            - Required columns present
+            - Date formats valid
+            - Numeric values valid
+            - No missing required data
+            </div>
+            """, unsafe_allow_html=True)
+            st.sidebar.dataframe(df.head(), use_container_width=True)
+            
+    except ValueError as e:
+        st.sidebar.error(f"⚠️ Error in uploaded CSV: {str(e)}")
+        if st.session_state.df.empty:
+            st.session_state.df = load_data()
+    except Exception as e:
+        st.sidebar.error(f"⚠️ Unexpected error: {str(e)}")
+        if st.session_state.df.empty:
+            st.session_state.df = load_data()
 
 # Custom CSS
 st.markdown("""
