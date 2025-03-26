@@ -68,9 +68,69 @@ except Exception as e:
 # Custom CSS
 st.markdown("""
     <style>
+    /* Base styles */
     .main {
         padding: 1rem;
     }
+    
+    /* Dark mode styles */
+    [data-theme="dark"] .stMetric {
+        background-color: rgba(255, 255, 255, 0.1);
+        color: white !important;
+    }
+    
+    [data-theme="dark"] .stMetric label {
+        color: rgba(255, 255, 255, 0.8) !important;
+    }
+    
+    [data-theme="dark"] .stMetric [data-testid="stMetricValue"] {
+        color: white !important;
+    }
+    
+    [data-theme="dark"] .stMetric [data-testid="stMetricDelta"] {
+        color: rgba(255, 255, 255, 0.8) !important;
+    }
+    
+    /* Light mode styles */
+    [data-theme="light"] .stMetric {
+        background-color: #f0f2f6;
+        color: #0e1117 !important;
+    }
+    
+    [data-theme="light"] .stMetric label {
+        color: #0e1117 !important;
+    }
+    
+    [data-theme="light"] .stMetric [data-testid="stMetricValue"] {
+        color: #0e1117 !important;
+    }
+    
+    [data-theme="light"] .stMetric [data-testid="stMetricDelta"] {
+        color: #0e1117 !important;
+    }
+    
+    /* Common metric styles */
+    .stMetric {
+        padding: 0.5rem;
+        border-radius: 0.5rem;
+        margin: 0.25rem 0;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    .stMetric > div[data-testid="metric-container"] {
+        width: 100%;
+    }
+    
+    .stMetric label {
+        font-size: clamp(0.8rem, 2vw, 1rem);
+        white-space: normal !important;
+    }
+    
+    .stMetric .css-1xarl3l {
+        font-size: clamp(1.2rem, 4vw, 1.8rem);
+    }
+    
     /* Responsive metrics styling */
     .stMetric {
         background-color: #f0f2f6;
@@ -139,74 +199,47 @@ st.markdown("""
     Track key metrics, rep performance, and pipeline health at a glance.
 """)
 
-# Key Metrics Row - Make it responsive
-if st.config.get_option("theme.base") == "light":
-    container = st.container()
-    with container:
-        # On mobile, stack metrics vertically
-        for metric in [
-            {
-                "label": "Total Pipeline",
-                "value": f"${metrics['total_pipeline']:,.0f}",
-                "delta": f"{metrics['late_stage_percentage']:.1f}% Late Stage"
-            },
-            {
-                "label": "Qualified Pipeline",
-                "value": f"${metrics['qualified_pipeline']:,.0f}",
-                "delta": f"{(metrics['qualified_pipeline']/metrics['total_pipeline']*100 if metrics['total_pipeline'] > 0 else 0):.1f}% of Total"
-            },
-            {
-                "label": "Average Deal Size",
-                "value": f"${filtered_df['Amount'].mean() if not filtered_df.empty else 0:,.0f}",
-                "delta": "Per Opportunity"
-            },
-            {
-                "label": "Late Stage Win Rate",
-                "value": f"{(len(won_deals) / len(late_stage_deals) * 100 if len(late_stage_deals) > 0 else 0):.1f}%",
-                "delta": "Stage 3+ Opportunities"
-            }
-        ]:
-            st.metric(
-                label=metric["label"],
-                value=metric["value"],
-                delta=metric["delta"]
-            )
+# Update the metrics display code to use custom classes
+if "dark" in st.config.get_option("theme.base"):
+    metrics_bg_color = "rgba(255, 255, 255, 0.1)"
+    text_color = "white"
 else:
-    # For larger screens, keep the original 4-column layout
-    col1, col2, col3, col4 = st.columns(4)
-    cols = [col1, col2, col3, col4]
-    
-    with cols[0]:
-        st.metric(
-            "Total Pipeline",
-            f"${metrics['total_pipeline']:,.0f}",
-            f"{metrics['late_stage_percentage']:.1f}% Late Stage"
-        )
-    
-    with cols[1]:
-        st.metric(
-            "Qualified Pipeline",
-            f"${metrics['qualified_pipeline']:,.0f}",
-            f"{(metrics['qualified_pipeline']/metrics['total_pipeline']*100 if metrics['total_pipeline'] > 0 else 0):.1f}% of Total"
-        )
-    
-    with cols[2]:
-        avg_deal_size = filtered_df['Amount'].mean() if not filtered_df.empty else 0
-        st.metric(
-            "Average Deal Size",
-            f"${avg_deal_size:,.0f}",
-            "Per Opportunity"
-        )
-    
-    with cols[3]:
-        late_stage_deals = filtered_df[filtered_df['Stage'] >= 3]
-        won_deals = late_stage_deals[late_stage_deals['Stage'] == 4]
-        win_rate = (len(won_deals) / len(late_stage_deals) * 100) if len(late_stage_deals) > 0 else 0
-        st.metric(
-            "Late Stage Win Rate",
-            f"{win_rate:.1f}%",
-            "Stage 3+ Opportunities"
-        )
+    metrics_bg_color = "#f0f2f6"
+    text_color = "#0e1117"
+
+# Key Metrics Row with explicit styling
+for metric in [
+    {
+        "label": "Total Pipeline",
+        "value": f"${metrics['total_pipeline']:,.0f}",
+        "delta": f"{metrics['late_stage_percentage']:.1f}% Late Stage",
+        "delta_color": "normal"
+    },
+    {
+        "label": "Qualified Pipeline",
+        "value": f"${metrics['qualified_pipeline']:,.0f}",
+        "delta": f"{(metrics['qualified_pipeline']/metrics['total_pipeline']*100 if metrics['total_pipeline'] > 0 else 0):.1f}% of Total",
+        "delta_color": "normal"
+    },
+    {
+        "label": "Average Deal Size",
+        "value": f"${filtered_df['Amount'].mean() if not filtered_df.empty else 0:,.0f}",
+        "delta": "Per Opportunity",
+        "delta_color": "off"
+    },
+    {
+        "label": "Late Stage Win Rate",
+        "value": f"{(len(won_deals) / len(late_stage_deals) * 100 if len(late_stage_deals) > 0 else 0):.1f}%",
+        "delta": "Stage 3+ Opportunities",
+        "delta_color": "off"
+    }
+]:
+    st.metric(
+        label=metric["label"],
+        value=metric["value"],
+        delta=metric["delta"],
+        delta_color=metric.get("delta_color", "normal")
+    )
 
 # Create tabs with shorter names for mobile
 tab1, tab2, tab3, tab4 = st.tabs([
