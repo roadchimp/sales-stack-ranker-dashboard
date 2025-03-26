@@ -356,6 +356,56 @@ with col3:
     )
     st.plotly_chart(fig_late_stage, use_container_width=True)
 
+# Qualified Pipeline by Source
+st.subheader("📊 Qualified Pipeline by Source")
+col1, col2 = st.columns(2)
+
+with col1:
+    # Calculate qualified pipeline by source
+    qualified_by_source = filtered_df.groupby('Source')['QualifiedPipeQTD'].sum().reset_index()
+    qualified_by_source = qualified_by_source.sort_values('QualifiedPipeQTD', ascending=True)  # Sort for better visualization
+    
+    fig_qualified_source = px.bar(
+        qualified_by_source,
+        x='QualifiedPipeQTD',
+        y='Source',
+        orientation='h',  # Horizontal bars
+        title='Qualified Pipeline by Source',
+        labels={'QualifiedPipeQTD': 'Qualified Pipeline ($)', 'Source': 'Source'},
+    )
+    
+    # Customize the layout
+    fig_qualified_source.update_traces(
+        texttemplate='$%{x:,.0f}',
+        textposition='outside'
+    )
+    fig_qualified_source.update_layout(
+        xaxis_title="Qualified Pipeline ($)",
+        yaxis_title="Source",
+        showlegend=False
+    )
+    st.plotly_chart(fig_qualified_source, use_container_width=True)
+
+with col2:
+    # Create a summary table with percentages
+    total_qualified = qualified_by_source['QualifiedPipeQTD'].sum()
+    qualified_summary = qualified_by_source.copy()
+    qualified_summary['Percentage'] = (qualified_summary['QualifiedPipeQTD'] / total_qualified * 100)
+    qualified_summary['QualifiedPipeQTD'] = qualified_summary['QualifiedPipeQTD'].apply(lambda x: f"${x:,.0f}")
+    qualified_summary['Percentage'] = qualified_summary['Percentage'].apply(lambda x: f"{x:.1f}%")
+    qualified_summary.columns = ['Source', 'Qualified Pipeline', 'Percentage of Total']
+    
+    st.markdown("### Source Breakdown")
+    st.dataframe(
+        qualified_summary,
+        column_config={
+            "Source": st.column_config.TextColumn("Source"),
+            "Qualified Pipeline": st.column_config.TextColumn("Qualified Pipeline"),
+            "Percentage of Total": st.column_config.TextColumn("% of Total")
+        },
+        use_container_width=True
+    )
+
 # Pipe Health & Stage 0 Detail Table
 st.header("🚦 Pipe Health and Stage 0 Detail")
 pipe_health_cols = ['Owner', 'Role', 'Amount', 'LateStageAmount', 'AvgAge', 'Stage0Count', 'Stage0Age']
