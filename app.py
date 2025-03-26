@@ -69,11 +69,11 @@ with st.sidebar.expander("🔍 Filters", expanded=False):
             (df['Region'].isin(selected_region)) &
             (df['CreatedDate'].dt.date >= date_range[0]) &
             (df['CreatedDate'].dt.date <= date_range[1])
-        ]
+        ].copy()  # Create a copy to avoid SettingWithCopyWarning
 
 # Calculate filtered metrics
-late_stage_deals = filtered_df[filtered_df['Stage'] >= 3]
-won_deals = late_stage_deals[late_stage_deals['Stage'] == 4]
+late_stage_deals = filtered_df[filtered_df['Stage'] >= 3].copy()
+won_deals = late_stage_deals[late_stage_deals['Stage'] == 4].copy()
 
 # Title and description
 st.title("📊 Sales Stack Ranker")
