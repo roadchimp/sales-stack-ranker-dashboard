@@ -200,7 +200,11 @@ st.markdown("""
 """)
 
 # Update the metrics display code to use custom classes
-if "dark" in st.config.get_option("theme.base"):
+# Get the current theme
+theme = st.get_option("theme.base")
+
+# Set colors based on theme
+if theme == "dark":
     metrics_bg_color = "rgba(255, 255, 255, 0.1)"
     text_color = "white"
 else:
