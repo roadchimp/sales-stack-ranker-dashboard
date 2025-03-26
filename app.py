@@ -14,7 +14,7 @@ def generate_commentary(summary_text):
         response = openai.ChatCompletion.create(
             model="gpt-4",
             messages=[
-                {"role": "system", "content": "You are an insightful sales analytics expert providing concise commentary on sales data."},
+                {"role": "system", "content": "You are an insightful sales analytics expert providing concise commentary on sales data.Please provide a clear, concise analysis of these metrics, focusing on key insights and potential areas for attention. Format the response in clear paragraphs with proper spacing using consistent fonts and avoiding italics."},
                 {"role": "user", "content": f"Provide insightful commentary on this sales data summary: {summary_text}"}
             ],
             max_tokens=200,
@@ -185,7 +185,6 @@ Pipeline Summary:
 - Pipeline Target QTD: ${df['PipelineTargetQTD'].sum():,.0f}
 - Pipeline Attainment: {(df['PipelineCreatedQTD'].sum() / df['PipelineTargetQTD'].sum() * 100 if df['PipelineTargetQTD'].sum() > 0 else 0):.1f}%
 
-Please provide a clear, concise analysis of these metrics, focusing on key insights and potential areas for attention. Format the response in clear paragraphs with proper spacing using consistent fonts and avoiding italics.
 """
 
 if st.button("✨ Generate AI Commentary"):
