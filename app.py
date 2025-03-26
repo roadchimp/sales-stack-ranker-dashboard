@@ -176,18 +176,28 @@ except Exception as e:
 
 # Generate Summary for Commentary
 summary_text = f"""
-Total Pipeline: ${df['Amount'].sum():,.0f},
-Qualified Pipeline QTD: ${df['QualifiedPipeQTD'].sum():,.0f},
-Late Stage Pipeline: ${df['LateStageAmount'].sum():,.0f},
-Average Stage 0 Age: {df['Stage0Age'].mean():.2f} days,
-Pipeline Created QTD: ${df['PipelineCreatedQTD'].sum():,.0f},
-Pipeline Target QTD: ${df['PipelineTargetQTD'].sum():,.0f},
-Pipeline Attainment: {(df['PipelineCreatedQTD'].sum() / df['PipelineTargetQTD'].sum() * 100 if df['PipelineTargetQTD'].sum() > 0 else 0):.1f}%
+Pipeline Summary:
+- Total Pipeline: ${df['Amount'].sum():,.0f}
+- Qualified Pipeline QTD: ${df['QualifiedPipeQTD'].sum():,.0f}
+- Late Stage Pipeline: ${df['LateStageAmount'].sum():,.0f}
+- Average Stage 0 Age: {df['Stage0Age'].mean():.2f} days
+- Pipeline Created QTD: ${df['PipelineCreatedQTD'].sum():,.0f}
+- Pipeline Target QTD: ${df['PipelineTargetQTD'].sum():,.0f}
+- Pipeline Attainment: {(df['PipelineCreatedQTD'].sum() / df['PipelineTargetQTD'].sum() * 100 if df['PipelineTargetQTD'].sum() > 0 else 0):.1f}%
+
+Please provide a clear, concise analysis of these metrics, focusing on key insights and potential areas for attention. Format the response in clear paragraphs with proper spacing.
 """
 
 if st.button("✨ Generate AI Commentary"):
-    commentary = generate_commentary(summary_text)
-    st.markdown(f"**🤖 GenAI Commentary:**\n\n{commentary}")
+    try:
+        commentary = generate_commentary(summary_text)
+        st.markdown("""
+        **🤖 GenAI Commentary:**
+        
+        {}
+        """.format(commentary))
+    except Exception as e:
+        st.error(f"Error generating commentary: {str(e)}")
 
 # Sidebar filters (only show if we have data)
 if not df.empty:
