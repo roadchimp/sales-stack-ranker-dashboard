@@ -65,142 +65,69 @@ except Exception as e:
     st.error(f"Error generating commentary: {str(e)}")
     summary = "Unable to generate commentary at this time."
 
-# Sidebar filters (only show if we have data)
-if not df.empty:
-    st.sidebar.header("Filters")
-    selected_region = st.sidebar.multiselect(
-        "Select Region",
-        options=df['Region'].unique(),
-        default=df['Region'].unique()
-    )
-
-    date_range = st.sidebar.date_input(
-        "Date Range",
-        value=(df['CreatedDate'].min(), df['CreatedDate'].max()),
-        min_value=df['CreatedDate'].min(),
-        max_value=df['CreatedDate'].max()
-    )
-
-    # Apply filters
-    filtered_df = df[
-        (df['Region'].isin(selected_region)) &
-        (df['CreatedDate'].dt.date >= date_range[0]) &
-        (df['CreatedDate'].dt.date <= date_range[1])
-    ]
-else:
-    filtered_df = df
-
-# CSV Data Loader in Sidebar with Template Download
-st.sidebar.header("Data Source")
-
-# Add CSV template download button
-st.sidebar.markdown("""
-### CSV Template Format
-Your CSV should include these columns:
-- OpportunityID (text)
-- Owner (text)
-- Role (text)
-- Region (text)
-- CreatedDate (YYYY-MM-DD)
-- CloseDate (YYYY-MM-DD)
-- Stage (0-4)
-- Amount (positive number)
-- Source (text)
-- LeadSourceCategory (text)
-- QualifiedPipeQTD (number)
-- LateStageAmount (number)
-- AvgAge (number)
-- Stage0Age (number)
-- Stage0Count (number)
-- PipelineCreatedQTD (number)
-- PipelineTargetQTD (number)
-""")
-
-# Generate sample data for template
-sample_df = pd.DataFrame({
-    'OpportunityID': ['OPP001', 'OPP002'],
-    'Owner': ['John Doe', 'Jane Smith'],
-    'Role': ['Account Executive', 'Senior AE'],
-    'Region': ['West', 'East'],
-    'CreatedDate': ['2024-01-01', '2024-01-02'],
-    'CloseDate': ['2024-03-01', '2024-03-02'],
-    'Stage': [0, 1],
-    'Amount': [50000, 75000],
-    'Source': ['Rep', 'Marketing'],
-    'LeadSourceCategory': ['Inbound', 'Outbound'],
-    'QualifiedPipeQTD': [0, 75000],
-    'LateStageAmount': [0, 0],
-    'AvgAge': [30, 45],
-    'Stage0Age': [30, 0],
-    'Stage0Count': [1, 0],
-    'PipelineCreatedQTD': [50000, 75000],
-    'PipelineTargetQTD': [60000, 90000]
-})
-
-# Convert sample DataFrame to CSV
-csv_template = sample_df.to_csv(index=False)
-st.sidebar.download_button(
-    label="📥 Download CSV Template",
-    data=csv_template,
-    file_name="sales_pipeline_template.csv",
-    mime="text/csv"
-)
-
-uploaded_file = st.sidebar.file_uploader("Upload your own CSV file (optional)", type=["csv"])
-
-# Load and process data
-if uploaded_file is not None:
-    try:
-        df = load_csv_data(uploaded_file)
-        st.session_state.df = df
-        st.sidebar.success("✅ Custom data loaded successfully!")
-        
-        # Show data preview with validation message
-        if st.sidebar.checkbox("Show Data Preview"):
-            st.sidebar.markdown("""
-            <div class="info-message">
-            ✓ All data validated successfully:
-            - Required columns present
-            - Date formats valid
-            - Numeric values valid
-            - No missing required data
-            </div>
-            """, unsafe_allow_html=True)
-            st.sidebar.dataframe(df.head(), use_container_width=True)
-            
-    except ValueError as e:
-        st.sidebar.error(f"⚠️ Error in uploaded CSV: {str(e)}")
-        if st.session_state.df.empty:
-            st.session_state.df = load_data()
-    except Exception as e:
-        st.sidebar.error(f"⚠️ Unexpected error: {str(e)}")
-        if st.session_state.df.empty:
-            st.session_state.df = load_data()
-
 # Custom CSS
 st.markdown("""
     <style>
     .main {
-        padding: 2rem;
+        padding: 1rem;
     }
+    /* Responsive metrics styling */
     .stMetric {
         background-color: #f0f2f6;
-        padding: 1rem;
+        padding: 0.5rem;
         border-radius: 0.5rem;
-        margin: 0.5rem 0;
+        margin: 0.25rem 0;
+        width: 100%;
+        box-sizing: border-box;
     }
-    .error-message {
-        color: #ff4b4b;
-        padding: 1rem;
-        background-color: #ffe5e5;
-        border-radius: 0.5rem;
-        margin: 1rem 0;
+    /* Make metric text responsive */
+    .stMetric > div[data-testid="metric-container"] {
+        width: 100%;
     }
-    .info-message {
-        padding: 1rem;
-        background-color: #e5f6ff;
-        border-radius: 0.5rem;
-        margin: 1rem 0;
+    .stMetric label {
+        font-size: clamp(0.8rem, 2vw, 1rem);
+        white-space: normal !important;
+    }
+    .stMetric .css-1xarl3l {
+        font-size: clamp(1.2rem, 4vw, 1.8rem);
+    }
+    /* Responsive table styling */
+    [data-testid="stDataFrame"] {
+        width: 100%;
+        overflow-x: auto;
+    }
+    /* Responsive chart styling */
+    [data-testid="stPlotlyChart"] > div {
+        width: 100%;
+        min-height: 200px;
+    }
+    /* Improve tab navigation on mobile */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 1rem;
+        overflow-x: auto;
+    }
+    .stTabs [data-baseweb="tab"] {
+        white-space: nowrap;
+        font-size: clamp(0.8rem, 2vw, 1rem);
+    }
+    /* Make columns stack on mobile */
+    @media (max-width: 640px) {
+        [data-testid="column"] {
+            width: 100% !important;
+            margin-bottom: 1rem;
+        }
+    }
+    /* Mobile-friendly sidebar */
+    .css-1d391kg {
+        width: auto;
+    }
+    @media (max-width: 640px) {
+        .css-1d391kg {
+            padding: 1rem 0.5rem;
+        }
+        .css-1d391kg .block-container {
+            padding: 0;
+        }
     }
     </style>
 """, unsafe_allow_html=True)
@@ -212,47 +139,81 @@ st.markdown("""
     Track key metrics, rep performance, and pipeline health at a glance.
 """)
 
-# Key Metrics Row (Keep at top level for immediate visibility)
-col1, col2, col3, col4 = st.columns(4)
+# Key Metrics Row - Make it responsive
+if st.config.get_option("theme.base") == "light":
+    container = st.container()
+    with container:
+        # On mobile, stack metrics vertically
+        for metric in [
+            {
+                "label": "Total Pipeline",
+                "value": f"${metrics['total_pipeline']:,.0f}",
+                "delta": f"{metrics['late_stage_percentage']:.1f}% Late Stage"
+            },
+            {
+                "label": "Qualified Pipeline",
+                "value": f"${metrics['qualified_pipeline']:,.0f}",
+                "delta": f"{(metrics['qualified_pipeline']/metrics['total_pipeline']*100 if metrics['total_pipeline'] > 0 else 0):.1f}% of Total"
+            },
+            {
+                "label": "Average Deal Size",
+                "value": f"${filtered_df['Amount'].mean() if not filtered_df.empty else 0:,.0f}",
+                "delta": "Per Opportunity"
+            },
+            {
+                "label": "Late Stage Win Rate",
+                "value": f"{(len(won_deals) / len(late_stage_deals) * 100 if len(late_stage_deals) > 0 else 0):.1f}%",
+                "delta": "Stage 3+ Opportunities"
+            }
+        ]:
+            st.metric(
+                label=metric["label"],
+                value=metric["value"],
+                delta=metric["delta"]
+            )
+else:
+    # For larger screens, keep the original 4-column layout
+    col1, col2, col3, col4 = st.columns(4)
+    cols = [col1, col2, col3, col4]
+    
+    with cols[0]:
+        st.metric(
+            "Total Pipeline",
+            f"${metrics['total_pipeline']:,.0f}",
+            f"{metrics['late_stage_percentage']:.1f}% Late Stage"
+        )
+    
+    with cols[1]:
+        st.metric(
+            "Qualified Pipeline",
+            f"${metrics['qualified_pipeline']:,.0f}",
+            f"{(metrics['qualified_pipeline']/metrics['total_pipeline']*100 if metrics['total_pipeline'] > 0 else 0):.1f}% of Total"
+        )
+    
+    with cols[2]:
+        avg_deal_size = filtered_df['Amount'].mean() if not filtered_df.empty else 0
+        st.metric(
+            "Average Deal Size",
+            f"${avg_deal_size:,.0f}",
+            "Per Opportunity"
+        )
+    
+    with cols[3]:
+        late_stage_deals = filtered_df[filtered_df['Stage'] >= 3]
+        won_deals = late_stage_deals[late_stage_deals['Stage'] == 4]
+        win_rate = (len(won_deals) / len(late_stage_deals) * 100) if len(late_stage_deals) > 0 else 0
+        st.metric(
+            "Late Stage Win Rate",
+            f"{win_rate:.1f}%",
+            "Stage 3+ Opportunities"
+        )
 
-with col1:
-    st.metric(
-        "Total Pipeline",
-        f"${metrics['total_pipeline']:,.0f}",
-        f"{metrics['late_stage_percentage']:.1f}% Late Stage"
-    )
-
-with col2:
-    st.metric(
-        "Qualified Pipeline",
-        f"${metrics['qualified_pipeline']:,.0f}",
-        f"{(metrics['qualified_pipeline']/metrics['total_pipeline']*100 if metrics['total_pipeline'] > 0 else 0):.1f}% of Total"
-    )
-
-with col3:
-    avg_deal_size = filtered_df['Amount'].mean() if not filtered_df.empty else 0
-    st.metric(
-        "Average Deal Size",
-        f"${avg_deal_size:,.0f}",
-        "Per Opportunity"
-    )
-
-with col4:
-    late_stage_deals = filtered_df[filtered_df['Stage'] >= 3]
-    won_deals = late_stage_deals[late_stage_deals['Stage'] == 4]
-    win_rate = (len(won_deals) / len(late_stage_deals) * 100) if len(late_stage_deals) > 0 else 0
-    st.metric(
-        "Late Stage Win Rate",
-        f"{win_rate:.1f}%",
-        "Stage 3+ Opportunities"
-    )
-
-# Create tabs
+# Create tabs with shorter names for mobile
 tab1, tab2, tab3, tab4 = st.tabs([
-    "📈 Overview & Attainment",
-    "👥 Rep Performance",
-    "🔍 Pipeline Analysis",
-    "📊 Source Analysis"
+    "📈 Overview",
+    "👥 Reps",
+    "🔍 Pipeline",
+    "📊 Sources"
 ])
 
 with tab1:
@@ -464,6 +425,11 @@ with tab3:
                 title='Opportunities by Stage (No Data)',
                 labels={'x': 'Stage', 'y': 'Count'}
             )
+        fig_stage.update_layout(
+            height=300,  # Smaller height for mobile
+            margin=dict(l=10, r=10, t=30, b=10),  # Reduced margins
+            autosize=True  # Enable autosizing
+        )
         st.plotly_chart(fig_stage, use_container_width=True)
 
     with col2:
@@ -487,6 +453,11 @@ with tab3:
                 'font_size': 14,
                 'showarrow': False
             }]
+        )
+        fig_late_stage.update_layout(
+            height=300,
+            margin=dict(l=10, r=10, t=30, b=10),
+            autosize=True
         )
         st.plotly_chart(fig_late_stage, use_container_width=True)
     
@@ -549,6 +520,11 @@ with tab3:
             xaxis_title="Date",
             yaxis_title="Pipeline Amount ($)",
             showlegend=False
+        )
+        fig_stage0_trend.update_layout(
+            height=300,
+            margin=dict(l=10, r=10, t=30, b=10),
+            autosize=True
         )
         st.plotly_chart(fig_stage0_trend, use_container_width=True)
 
@@ -665,4 +641,115 @@ st.markdown("""
     - 🔍 Advanced filtering and search
     - 📱 Mobile-optimized view
     - 📈 Custom KPI tracking
-""") 
+""")
+
+# Sidebar with collapsible sections
+st.sidebar.header("📊 Dashboard Controls")
+
+# Collapsible filter section
+with st.sidebar.expander("🔍 Filters", expanded=False):
+    if not df.empty:
+        selected_region = st.multiselect(
+            "Select Region",
+            options=df['Region'].unique(),
+            default=df['Region'].unique()
+        )
+
+        date_range = st.date_input(
+            "Date Range",
+            value=(df['CreatedDate'].min(), df['CreatedDate'].max()),
+            min_value=df['CreatedDate'].min(),
+            max_value=df['CreatedDate'].max()
+        )
+
+        # Apply filters
+        filtered_df = df[
+            (df['Region'].isin(selected_region)) &
+            (df['CreatedDate'].dt.date >= date_range[0]) &
+            (df['CreatedDate'].dt.date <= date_range[1])
+        ]
+    else:
+        filtered_df = df
+
+# Collapsible data source section
+with st.sidebar.expander("📥 Data Source", expanded=False):
+    st.markdown("""
+    ### CSV Template Format
+    Your CSV should include these columns:
+    - OpportunityID (text)
+    - Owner (text)
+    - Role (text)
+    - Region (text)
+    - CreatedDate (YYYY-MM-DD)
+    - CloseDate (YYYY-MM-DD)
+    - Stage (0-4)
+    - Amount (positive number)
+    - Source (text)
+    - LeadSourceCategory (text)
+    - QualifiedPipeQTD (number)
+    - LateStageAmount (number)
+    - AvgAge (number)
+    - Stage0Age (number)
+    - Stage0Count (number)
+    - PipelineCreatedQTD (number)
+    - PipelineTargetQTD (number)
+    """)
+
+    # Generate sample data for template
+    sample_df = pd.DataFrame({
+        'OpportunityID': ['OPP001', 'OPP002'],
+        'Owner': ['John Doe', 'Jane Smith'],
+        'Role': ['Account Executive', 'Senior AE'],
+        'Region': ['West', 'East'],
+        'CreatedDate': ['2024-01-01', '2024-01-02'],
+        'CloseDate': ['2024-03-01', '2024-03-02'],
+        'Stage': [0, 1],
+        'Amount': [50000, 75000],
+        'Source': ['Rep', 'Marketing'],
+        'LeadSourceCategory': ['Inbound', 'Outbound'],
+        'QualifiedPipeQTD': [0, 75000],
+        'LateStageAmount': [0, 0],
+        'AvgAge': [30, 45],
+        'Stage0Age': [30, 0],
+        'Stage0Count': [1, 0],
+        'PipelineCreatedQTD': [50000, 75000],
+        'PipelineTargetQTD': [60000, 90000]
+    })
+
+    # Convert sample DataFrame to CSV
+    csv_template = sample_df.to_csv(index=False)
+    st.download_button(
+        label="📥 Download CSV Template",
+        data=csv_template,
+        file_name="sales_pipeline_template.csv",
+        mime="text/csv"
+    )
+
+    uploaded_file = st.file_uploader("Upload your own CSV file (optional)", type=["csv"])
+
+    # Load and process data
+    if uploaded_file is not None:
+        try:
+            df = load_csv_data(uploaded_file)
+            st.session_state.df = df
+            st.success("✅ Custom data loaded successfully!")
+            
+            # Show data preview with validation message
+            if st.checkbox("Show Data Preview"):
+                st.markdown("""
+                ✓ All data validated successfully:
+                - Required columns present
+                - Date formats valid
+                - Numeric values valid
+                - No missing required data
+                """)
+                st.dataframe(df.head(), use_container_width=True)
+                
+        except ValueError as e:
+            st.error(f"⚠️ Error in uploaded CSV: {str(e)}")
+            if st.session_state.df.empty:
+                st.session_state.df = load_data()
+        except Exception as e:
+            st.error(f"⚠️ Unexpected error: {str(e)}")
+            if st.session_state.df.empty:
+                st.session_state.df = load_data() 
