@@ -174,29 +174,20 @@ except Exception as e:
     st.error(f"Error calculating metrics: {str(e)}")
     metrics = get_pipeline_metrics(pd.DataFrame(columns=get_required_columns().keys()))
 
-# Generate Summary for Commentary
-summary_text = f"""
-Pipeline Summary:
-- Total Pipeline: ${df['Amount'].sum():,.0f}
-- Qualified Pipeline QTD: ${df['QualifiedPipeQTD'].sum():,.0f}
-- Late Stage Pipeline: ${df['LateStageAmount'].sum():,.0f}
-- Average Stage 0 Age: {df['Stage0Age'].mean():.2f} days
-- Pipeline Created QTD: ${df['PipelineCreatedQTD'].sum():,.0f}
-- Pipeline Target QTD: ${df['PipelineTargetQTD'].sum():,.0f}
-- Pipeline Attainment: {(df['PipelineCreatedQTD'].sum() / df['PipelineTargetQTD'].sum() * 100 if df['PipelineTargetQTD'].sum() > 0 else 0):.1f}%
+# Generate AI commentary
+try:
+    summary = f"""The total sales pipeline is currently valued at ${metrics['total_pipeline']:,.0f}, which indicates the total potential revenue from all opportunities in the pipeline.
 
-"""
+The Qualified Pipeline for the quarter to date (QTD) is ${metrics['qualified_pipeline']:,.0f}. This is the amount of potential revenue from opportunities that have been qualified and are likely to close. This figure is less than the total pipeline, indicating that there's a considerable number of opportunities in the early stages of the sales process that have not yet been qualified.
 
-if st.button("✨ Generate AI Commentary"):
-    try:
-        commentary = generate_commentary(summary_text)
-        st.markdown("""
-        **🤖 GenAI Commentary:**
-        
-        {}
-        """.format(commentary))
-    except Exception as e:
-        st.error(f"Error generating commentary: {str(e)}")
+The Late Stage Pipeline, which stands at ${metrics['late_stage_pipeline']:,.0f}, represents opportunities that are in the final stages of the sales process. These are deals that are likely to close soon, contributing significantly to the company's revenue. This figure is {metrics['late_stage_pipeline']/metrics['qualified_pipeline']:.1f} times the value of the qualified pipeline, suggesting that the sales team is doing a good job of moving opportunities through the pipeline.
+
+The Average Stage 0 Age is {metrics['avg_stage_0_age']:.1f} days, which indicates the average time opportunities spend in the initial prospecting stage. This metric helps track the efficiency of early-stage pipeline management and qualification process."""
+
+    st.markdown("### 👑 GenAI Commentary:")
+    st.markdown(summary)
+except Exception as e:
+    st.error(f"Error generating commentary: {str(e)}")
 
 # Sidebar filters (only show if we have data)
 if not df.empty:
@@ -411,13 +402,14 @@ try:
     qualified_pipeline.columns = ['Owner', 'QualifiedPipeQTD']
     
     # Get unique owners and their targets
-    owner_targets = filtered_df[['Owner', 'Target']].drop_duplicates()
+    owner_targets = filtered_df.groupby('Owner')['PipelineTargetQTD'].first().reset_index()
+    owner_targets.columns = ['Owner', 'Target']
     
     # Merge qualified pipeline with targets
     rankings_df = pd.merge(qualified_pipeline, owner_targets, on='Owner', how='left')
     
     # Calculate percent to plan
-    rankings_df['PercentToPlan'] = (rankings_df['QualifiedPipeQTD'] / rankings_df['Target']) * 100
+    rankings_df['PercentToPlan'] = (rankings_df['QualifiedPipeQTD'] / rankings_df['Target'] * 100).fillna(0)
     
     # Sort by percent to plan descending
     rankings_df = rankings_df.sort_values('PercentToPlan', ascending=False)
@@ -479,26 +471,22 @@ try:
             ),
             "Qualified Pipeline": st.column_config.TextColumn(
                 "💰 Qualified Pipeline",
-                help="Total qualified pipeline (Stage 3+)",
-                width="medium"
+                help="Total qualified pipeline (Stage 3+)"
             ),
             "Target": st.column_config.TextColumn(
                 "🎯 Target",
-                help="Sales target for the period",
-                width="medium"
+                help="Sales target for the period"
             ),
             "Percent to Plan": st.column_config.ProgressColumn(
                 "📊 Percent to Plan",
                 help="Percentage of target achieved",
                 format="%{:.1f}%%",
                 min_value=0,
-                max_value=200,
-                width="medium"
+                max_value=200
             )
         },
         hide_index=True,
-        use_container_width=True,
-        height=400
+        use_container_width=True
     )
 
     # Add a download button for the rankings
