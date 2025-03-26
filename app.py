@@ -45,6 +45,47 @@ if 'df' not in st.session_state:
 # Use the session state DataFrame
 df = st.session_state.df
 
+# After the initial data loading and before the metrics display
+# Initialize filtered_df with the full dataset
+filtered_df = df
+
+# Sidebar with collapsible sections
+st.sidebar.header("📊 Dashboard Controls")
+
+# Collapsible filter section
+with st.sidebar.expander("🔍 Filters", expanded=False):
+    if not df.empty:
+        selected_region = st.multiselect(
+            "Select Region",
+            options=df['Region'].unique(),
+            default=df['Region'].unique()
+        )
+
+        date_range = st.date_input(
+            "Date Range",
+            value=(df['CreatedDate'].min(), df['CreatedDate'].max()),
+            min_value=df['CreatedDate'].min(),
+            max_value=df['CreatedDate'].max()
+        )
+
+        # Apply filters
+        filtered_df = df[
+            (df['Region'].isin(selected_region)) &
+            (df['CreatedDate'].dt.date >= date_range[0]) &
+            (df['CreatedDate'].dt.date <= date_range[1])
+        ]
+
+# Calculate late stage deals for metrics
+late_stage_deals = filtered_df[filtered_df['Stage'] >= 3]
+won_deals = late_stage_deals[late_stage_deals['Stage'] == 4]
+
+# Title and description
+st.title("📊 Sales Stack Ranker")
+st.markdown("""
+    This dashboard provides real-time insights into your sales pipeline performance.
+    Track key metrics, rep performance, and pipeline health at a glance.
+""")
+
 # Calculate metrics (with error handling)
 try:
     metrics = get_pipeline_metrics(df)
@@ -191,13 +232,6 @@ st.markdown("""
     }
     </style>
 """, unsafe_allow_html=True)
-
-# Title and description
-st.title("📊 Sales Stack Ranker")
-st.markdown("""
-    This dashboard provides real-time insights into your sales pipeline performance.
-    Track key metrics, rep performance, and pipeline health at a glance.
-""")
 
 # Update the metrics display code to use custom classes
 # Get the current theme
@@ -679,34 +713,6 @@ st.markdown("""
     - 📱 Mobile-optimized view
     - 📈 Custom KPI tracking
 """)
-
-# Sidebar with collapsible sections
-st.sidebar.header("📊 Dashboard Controls")
-
-# Collapsible filter section
-with st.sidebar.expander("🔍 Filters", expanded=False):
-    if not df.empty:
-        selected_region = st.multiselect(
-            "Select Region",
-            options=df['Region'].unique(),
-            default=df['Region'].unique()
-        )
-
-        date_range = st.date_input(
-            "Date Range",
-            value=(df['CreatedDate'].min(), df['CreatedDate'].max()),
-            min_value=df['CreatedDate'].min(),
-            max_value=df['CreatedDate'].max()
-        )
-
-        # Apply filters
-        filtered_df = df[
-            (df['Region'].isin(selected_region)) &
-            (df['CreatedDate'].dt.date >= date_range[0]) &
-            (df['CreatedDate'].dt.date <= date_range[1])
-        ]
-    else:
-        filtered_df = df
 
 # Collapsible data source section
 with st.sidebar.expander("📥 Data Source", expanded=False):
