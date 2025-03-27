@@ -26,15 +26,31 @@ def get_pipeline_metrics(df: pd.DataFrame) -> Dict[str, Any]:
             'source_distribution': {}
         }
     
+    # Helper function to identify late stages (numeric >= 3 or 'Closed Won')
+    def is_late_stage(stage):
+        if isinstance(stage, (int, float)):
+            return stage >= 3
+        if isinstance(stage, str):
+            return stage.lower() in ['closed won', 'closed lost']
+        return False
+    
+    # Helper function to identify won deals (numeric == 4 or 'Closed Won')
+    def is_won(stage):
+        if isinstance(stage, (int, float)):
+            return stage == 4
+        if isinstance(stage, str):
+            return stage.lower() == 'closed won'
+        return False
+    
     # Calculate total pipeline
     total_pipeline = df['Amount'].sum()
     
-    # Calculate qualified pipeline (stages 3 and 4)
-    qualified_pipeline = df[df['Stage'] >= 3]['Amount'].sum()
+    # Calculate qualified pipeline (late stages)
+    qualified_pipeline = df[df['Stage'].apply(is_late_stage)]['Amount'].sum()
     
-    # Calculate win rate (stage 4 deals / total deals)
+    # Calculate win rate (won deals / total deals)
     total_deals = len(df)
-    won_deals = len(df[df['Stage'] == 4])
+    won_deals = len(df[df['Stage'].apply(is_won)])
     win_rate = won_deals / total_deals if total_deals > 0 else 0
     
     # Calculate average deal size
@@ -44,8 +60,8 @@ def get_pipeline_metrics(df: pd.DataFrame) -> Dict[str, Any]:
     df['DaysInPipeline'] = (pd.Timestamp.now() - df['CreatedDate']).dt.days
     pipeline_velocity = df['DaysInPipeline'].mean() if not df.empty else 0
     
-    # Calculate late stage amount (stages 3 and 4)
-    late_stage_amount = df[df['Stage'] >= 3]['Amount'].sum()
+    # Calculate late stage amount
+    late_stage_amount = df[df['Stage'].apply(is_late_stage)]['Amount'].sum()
     
     # Calculate stage distribution
     stage_distribution = df.groupby('Stage')['Amount'].sum().to_dict()

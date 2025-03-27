@@ -21,10 +21,25 @@ def display_rep_performance_tab(df: pd.DataFrame) -> None:
         # Rep Performance Section
         st.subheader("Rep Performance")
         
+        # Helper functions for Stage analysis
+        def is_qualified(stage):
+            if isinstance(stage, (int, float)):
+                return stage >= 3
+            if isinstance(stage, str):
+                return stage.lower() in ['closed won', 'closed lost']
+            return False
+            
+        def is_won(stage):
+            if isinstance(stage, (int, float)):
+                return stage == 4
+            if isinstance(stage, str):
+                return stage.lower() == 'closed won'
+            return False
+        
         # Calculate rep metrics
         rep_metrics = df.groupby('Owner').agg({
             'Amount': ['sum', 'count', 'mean'],
-            'Stage': lambda x: (x >= 3).mean(),  # Qualified pipeline percentage
+            'Stage': lambda x: x.apply(is_qualified).mean(),  # Qualified pipeline percentage
             'CreatedDate': lambda x: (pd.Timestamp.now() - x).mean().days  # Average age
         }).reset_index()
         
@@ -49,23 +64,19 @@ def display_rep_performance_tab(df: pd.DataFrame) -> None:
         # Create rep distribution DataFrame
         rep_df = pd.DataFrame({
             'Rep': rep_metrics['Rep'],
-            'Amount': rep_metrics['Total Amount'],
-            'Percentage': (rep_metrics['Total Amount'] / rep_metrics['Total Amount'].sum() * 100).round(1)
+            'Amount': rep_metrics['Total Amount']
         })
         
-        # Create bar chart with percentages
+        # Create bar chart
         fig = px.bar(
             rep_df,
             x='Rep',
-            y=['Amount', 'Percentage'],
-            barmode='group',
+            y='Amount',
             title='Pipeline Distribution by Rep'
         )
         
         fig.update_layout(
             yaxis_title='Amount ($)',
-            yaxis2=dict(title='Percentage (%)'),
-            showlegend=True,
             height=400
         )
         
@@ -97,7 +108,7 @@ def display_rep_performance_tab(df: pd.DataFrame) -> None:
         
         # Calculate conversion metrics
         conversion_metrics = df.groupby('Owner').agg({
-            'Stage': lambda x: (x == 4).mean()  # Win rate
+            'Stage': lambda x: x.apply(is_won).mean()  # Win rate
         }).reset_index()
         
         conversion_metrics.columns = ['Rep', 'Win Rate']

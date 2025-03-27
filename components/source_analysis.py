@@ -20,10 +20,25 @@ def display_source_analysis_tab(df: pd.DataFrame) -> None:
     # Source Performance Section
     st.subheader("Source Performance")
     
+    # Helper functions for Stage analysis
+    def is_qualified(stage):
+        if isinstance(stage, (int, float)):
+            return stage >= 3
+        if isinstance(stage, str):
+            return stage.lower() in ['closed won', 'closed lost']
+        return False
+        
+    def is_won(stage):
+        if isinstance(stage, (int, float)):
+            return stage == 4
+        if isinstance(stage, str):
+            return stage.lower() == 'closed won'
+        return False
+    
     # Calculate source metrics
     source_metrics = df.groupby('Source').agg({
         'Amount': ['sum', 'count', 'mean'],
-        'Stage': lambda x: (x >= 3).mean()  # Qualified pipeline percentage
+        'Stage': lambda x: x.apply(is_qualified).mean()  # Qualified pipeline percentage
     }).reset_index()
     
     source_metrics.columns = ['Source', 'Total Amount', 'Deal Count', 'Avg Deal Size', 'Qualified %']
@@ -61,7 +76,6 @@ def display_source_analysis_tab(df: pd.DataFrame) -> None:
     
     fig.update_layout(
         yaxis_title='Amount ($)',
-        yaxis2_title='Percentage (%)',
         showlegend=True
     )
     
@@ -92,7 +106,7 @@ def display_source_analysis_tab(df: pd.DataFrame) -> None:
     
     # Calculate conversion metrics
     conversion_metrics = df.groupby('Source').agg({
-        'Stage': lambda x: (x == 4).mean()  # Win rate
+        'Stage': lambda x: x.apply(is_won).mean()  # Win rate
     }).reset_index()
     
     conversion_metrics.columns = ['Source', 'Win Rate']

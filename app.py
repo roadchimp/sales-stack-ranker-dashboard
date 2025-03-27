@@ -73,9 +73,24 @@ with st.sidebar.expander("🔍 Filters", expanded=False):
             (df['CreatedDate'].dt.date <= date_range[1])
         ].copy()  # Create a copy to avoid SettingWithCopyWarning
 
+# Helper functions for Stage filtering
+def is_late_stage(stage):
+    if isinstance(stage, (int, float)):
+        return stage >= 3
+    if isinstance(stage, str):
+        return stage.lower() in ['closed won', 'closed lost']
+    return False
+
+def is_won_deal(stage):
+    if isinstance(stage, (int, float)):
+        return stage == 4
+    if isinstance(stage, str):
+        return stage.lower() == 'closed won'
+    return False
+
 # Calculate filtered metrics
-late_stage_deals = filtered_df[filtered_df['Stage'] >= 3].copy()
-won_deals = late_stage_deals[late_stage_deals['Stage'] == 4].copy()
+late_stage_deals = filtered_df[filtered_df['Stage'].apply(is_late_stage)].copy()
+won_deals = filtered_df[filtered_df['Stage'].apply(is_won_deal)].copy()
 
 # Title and description
 st.title("📊 Sales Stack Ranker")
@@ -173,6 +188,7 @@ with tab1:
     # Display pipeline by stage
     st.subheader("Pipeline by Stage")
     stage_pipeline = df.groupby('Stage')['Amount'].sum().reset_index()
+    # Ensure all Stage values are strings for chart display
     stage_pipeline['Stage'] = stage_pipeline['Stage'].astype(str)
     st.bar_chart(stage_pipeline.set_index('Stage'))
 
@@ -192,10 +208,6 @@ with tab4:
 with tab5:
     display_email_controls()
 
-# Footer
-st.markdown("---")
-st.markdown("Built with ❤️ by Roadchimp")
-
 # Collapsible data source section
 with st.sidebar.expander("📥 Data Source", expanded=False):
     st.markdown("""
@@ -207,38 +219,24 @@ with st.sidebar.expander("📥 Data Source", expanded=False):
     - Region (text)
     - CreatedDate (YYYY-MM-DD)
     - CloseDate (YYYY-MM-DD)
-    - Stage (0-4)
+    - Stage (0-6, 'Closed Won', or 'Closed Lost')
     - Amount (positive number)
     - Source (text)
     - LeadSourceCategory (text)
-    - QualifiedPipeQTD (number)
-    - LateStageAmount (number)
-    - AvgAge (number)
-    - Stage0Age (number)
-    - Stage0Count (number)
-    - PipelineCreatedQTD (number)
-    - PipelineTargetQTD (number)
     """)
 
     # Generate sample data for template
     sample_df = pd.DataFrame({
-        'OpportunityID': ['OPP001', 'OPP002'],
-        'Owner': ['John Doe', 'Jane Smith'],
-        'Role': ['Account Executive', 'Senior AE'],
-        'Region': ['West', 'East'],
-        'CreatedDate': ['2024-01-01', '2024-01-02'],
-        'CloseDate': ['2024-03-01', '2024-03-02'],
-        'Stage': [0, 1],
-        'Amount': [50000, 75000],
-        'Source': ['Rep', 'Marketing'],
-        'LeadSourceCategory': ['Inbound', 'Outbound'],
-        'QualifiedPipeQTD': [0, 75000],
-        'LateStageAmount': [0, 0],
-        'AvgAge': [30, 45],
-        'Stage0Age': [30, 0],
-        'Stage0Count': [1, 0],
-        'PipelineCreatedQTD': [50000, 75000],
-        'PipelineTargetQTD': [60000, 90000]
+        'OpportunityID': ['OPP001', 'OPP002', 'OPP003', 'OPP004'],
+        'Owner': ['John Doe', 'Jane Smith', 'Alex Johnson', 'Maria Garcia'],
+        'Role': ['Account Executive', 'Senior AE', 'Sales Manager', 'Account Executive'],
+        'Region': ['West', 'East', 'North', 'South'],
+        'CreatedDate': ['2024-01-01', '2024-01-02', '2024-01-03', '2024-01-04'],
+        'CloseDate': ['2024-03-01', '2024-03-02', '2024-03-03', '2024-03-04'],
+        'Stage': [0, 3, 'Closed Won', 'Closed Lost'],
+        'Amount': [50000, 75000, 100000, 60000],
+        'Source': ['Rep', 'Marketing', 'Partner', 'Referral'],
+        'LeadSourceCategory': ['Inbound', 'Outbound', 'Partner', 'Inbound']
     })
 
     # Convert sample DataFrame to CSV

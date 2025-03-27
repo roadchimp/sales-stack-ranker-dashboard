@@ -20,17 +20,10 @@ def get_required_columns() -> Dict[str, Any]:
         'Region': str,
         'CreatedDate': 'datetime64[ns]',
         'CloseDate': 'datetime64[ns]',
-        'Stage': int,
+        'Stage': object,  # Changed from int to object to support both numeric and string values
         'Amount': float,
         'Source': str,
-        'LeadSourceCategory': str,
-        'QualifiedPipeQTD': float,
-        'LateStageAmount': float,
-        'AvgAge': float,
-        'Stage0Age': float,
-        'Stage0Count': int,
-        'PipelineCreatedQTD': float,
-        'PipelineTargetQTD': float
+        'LeadSourceCategory': str
     }
 
 def validate_dataframe(df: pd.DataFrame) -> None:
@@ -52,6 +45,8 @@ def validate_dataframe(df: pd.DataFrame) -> None:
     
     # Validate data types
     for col, expected_type in required_columns.items():
+        if col == 'Stage':  # Special handling for Stage column
+            continue  # Skip standard conversion, we'll handle Stage specially below
         try:
             if expected_type == 'datetime64[ns]':
                 df[col] = pd.to_datetime(df[col])
@@ -60,12 +55,95 @@ def validate_dataframe(df: pd.DataFrame) -> None:
         except Exception as e:
             raise ValueError(f"Error converting column {col} to type {expected_type}: {str(e)}")
     
-    # Validate value ranges
-    if (df['Stage'] < 0).any() or (df['Stage'] > 4).any():
-        raise ValueError("Stage must be between 0 and 4")
+    # Normalize Stage column to handle both numeric and string values
+    def normalize_stage(s):
+        # Try to convert to integer first
+        try:
+            return int(s)
+        except (ValueError, TypeError):
+            # If not convertible to int, keep as string
+            return str(s)
     
+    df['Stage'] = df['Stage'].apply(normalize_stage)
+    
+    # Validate Amount (must be positive)
     if (df['Amount'] < 0).any():
         raise ValueError("Amount must be positive")
+
+def recalc_derived_fields(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Recalculate derived fields for each opportunity based on Owner.
+
+    Derived Fields:
+    - QualifiedPipeQTD: Sum of Amount for opportunities where stage is numeric and > 3 or stage is 'closed won'
+    - LateStageAmount: Sum of Amount for opportunities where stage is numeric and >= 3 or stage is 'closed lost' (excluding 'closed won')
+    - AvgAge: Average of (CloseDate - CreatedDate) in days, excluding opportunities with stage 'closed lost'
+    - Stage0Count: Count of opportunities where stage is 0 (numeric 0 or string '0')
+    - Stage0Age: Average age (in days) for opportunities with stage = 0
+    - PipelineCreatedQTD: Sum of Amount for opportunities created in the current quarter
+    - PipelineTargetQTD: 120% of PipelineCreatedQTD
+
+    Returns:
+        pd.DataFrame: DataFrame with new derived columns merged in
+    """
+    df = df.copy()
+    # Compute age in days
+    df['AgeDays'] = (df['CloseDate'] - df['CreatedDate']).dt.days
+
+    # Normalize Stage: if convertible to float, use numeric; otherwise, use lower-case string
+    def normalize_stage(s):
+        try:
+            return float(s)
+        except Exception:
+            return str(s).strip().lower()
+
+    df['stage_norm'] = df['Stage'].apply(normalize_stage)
+
+    # Determine current quarter start date
+    now = pd.Timestamp.now()
+    quarter = now.quarter
+    year = now.year
+    quarter_start = pd.Timestamp(year=year, month=3*(quarter-1)+1, day=1)
+
+    # QualifiedPipeQTD: include if (numeric and > 3) OR (string equals 'closed won')
+    qualified_mask = df['stage_norm'].apply(lambda x: (isinstance(x, float) and x > 3) or (isinstance(x, str) and x == 'closed won'))
+    qpipe = df[qualified_mask].groupby('Owner')['Amount'].sum()
+
+    # LateStageAmount: include if (numeric and >= 3) OR (string equals 'closed lost')
+    late_mask = df['stage_norm'].apply(lambda x: (isinstance(x, float) and x >= 3) or (isinstance(x, str) and x == 'closed lost'))
+    lstage = df[late_mask].groupby('Owner')['Amount'].sum()
+
+    # AvgAge: average AgeDays excluding 'closed lost'
+    age_mask = df['stage_norm'].apply(lambda x: not (isinstance(x, str) and x == 'closed lost'))
+    avg_age = df[age_mask].groupby('Owner')['AgeDays'].mean()
+
+    # Stage0Count and Stage0Age: count and average for rows where stage_norm equals 0 (numeric or string '0')
+    stage0_mask = df['stage_norm'].apply(lambda x: (isinstance(x, float) and x == 0) or (isinstance(x, str) and x == '0'))
+    stage0_count = df[stage0_mask].groupby('Owner').size()
+    stage0_age = df[stage0_mask].groupby('Owner')['AgeDays'].mean()
+
+    # PipelineCreatedQTD: sum Amount for opportunities with CreatedDate in the current quarter
+    pipeline_created = df[df['CreatedDate'] >= quarter_start].groupby('Owner')['Amount'].sum()
+    # PipelineTargetQTD: 120% of PipelineCreatedQTD
+    pipeline_target = pipeline_created * 1.2
+
+    # Combine aggregated values into a DataFrame
+    agg_df = pd.DataFrame({
+        'QualifiedPipeQTD': qpipe,
+        'LateStageAmount': lstage,
+        'AvgAge': avg_age,
+        'Stage0Count': stage0_count,
+        'Stage0Age': stage0_age,
+        'PipelineCreatedQTD': pipeline_created
+    }).fillna(0)
+    agg_df['PipelineTargetQTD'] = agg_df['PipelineCreatedQTD'] * 1.2
+
+    # Merge aggregated values back into original DataFrame
+    df = df.merge(agg_df, how='left', left_on='Owner', right_index=True)
+
+    # Drop temporary columns
+    df = df.drop(columns=['AgeDays', 'stage_norm'])
+    return df
 
 def load_csv_data(file) -> pd.DataFrame:
     """
@@ -83,6 +161,8 @@ def load_csv_data(file) -> pd.DataFrame:
     try:
         df = pd.read_csv(file)
         validate_dataframe(df)
+        # Recalculate derived fields
+        df = recalc_derived_fields(df)
         return df
     except Exception as e:
         raise ValueError(f"Error loading CSV data: {str(e)}")
@@ -119,12 +199,7 @@ def load_data() -> pd.DataFrame:
         amounts = np.random.lognormal(mean=12.5, sigma=0.6, size=n_records)
         amounts = np.round(amounts, -3)  # Round to nearest thousand
         
-        # Generate targets that are challenging but achievable
-        # Base target should be achievable with about 8-10 closed deals
-        base_target = 1000000  # $1M base target
-        rep_targets = {rep: base_target * (0.8 + 0.4 * np.random.random()) for rep in sales_reps}
-        
-        # Create the DataFrame
+        # Generate synthetic data without derived columns; they will be recalculated
         df = pd.DataFrame({
             'OpportunityID': [f'OPP-{i:04d}' for i in range(n_records)],
             'Owner': np.random.choice(sales_reps, size=n_records),
@@ -138,22 +213,9 @@ def load_data() -> pd.DataFrame:
             'LeadSourceCategory': np.random.choice(['Marketing', 'Sales', 'Partner'], size=n_records)
         })
         
-        # Add derived columns
-        df['QualifiedPipeQTD'] = df[df['Stage'] >= 2]['Amount']
-        df['LateStageAmount'] = df[df['Stage'] >= 3]['Amount']
-        df['AvgAge'] = np.random.randint(15, 60, size=n_records)
-        df['Stage0Age'] = np.where(df['Stage'] == 0, df['AvgAge'], 0)
-        df['Stage0Count'] = (df['Stage'] == 0).astype(int)
-        df['PipelineCreatedQTD'] = df['Amount']
+        print(f"Generated {n_records} total deals, {len(df[df['Stage'] == 4])} closed won")
+        print(f"Average deal size: ${df['Amount'].mean():,.0f}")
         
-        # Add target amount for each rep
-        df['PipelineTargetQTD'] = df['Owner'].map(rep_targets)
-        
-        # Validate the data
-        total_deals = len(df)
-        closed_won_deals = len(df[df['Stage'] == 4])
-        avg_deal_size = df['Amount'].mean()
-        print(f"Generated {total_deals} total deals, {closed_won_deals} closed won")
-        print(f"Average deal size: ${avg_deal_size:,.0f}")
-        
+        # Recalculate derived fields
+        df = recalc_derived_fields(df)
         return df 
