@@ -1,24 +1,19 @@
 """
-Main application file for Sales Stack Ranker dashboard.
+Sales Stack Ranker Dashboard
 """
 import streamlit as st
 from pathlib import Path
 import pandas as pd
 
 # Import components
-from components.metrics import display_key_metrics
-# We'll create these other components next
-from components.overview_tab import display_overview_tab
-from components.rep_performance import display_rep_performance_tab
 from components.pipeline_analysis import display_pipeline_analysis_tab
+from components.rep_performance import display_rep_performance_tab
 from components.source_analysis import display_source_analysis_tab
-from components.ai_commentary import display_ai_commentary_tab
 from components.email_controls import display_email_controls
 
 # Import utilities
 from utils.data_loader import load_data, load_csv_data, get_required_columns
 from utils.metrics_calculator import get_pipeline_metrics
-from utils.ai_commentary import generate_commentary
 
 # Set page config (must be called before any other Streamlit command)
 st.set_page_config(
@@ -91,9 +86,6 @@ except Exception as e:
     st.error(f"Error calculating metrics: {str(e)}")
     metrics = get_pipeline_metrics(pd.DataFrame(columns=get_required_columns().keys()))
 
-# Display key metrics
-display_key_metrics(metrics, filtered_df, late_stage_deals, won_deals)
-
 # Create tabs
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📈 Overview",
@@ -103,35 +95,77 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📧 Email Controls"
 ])
 
-# Display tab contents
+# Overview Tab
 with tab1:
-    display_overview_tab(metrics, filtered_df)
+    st.header("Sales Pipeline Overview")
+    
+    # Get metrics
+    metrics = get_pipeline_metrics(df)
+    
+    # Display metrics in columns
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.metric(
+            "Total Pipeline",
+            f"${metrics['total_pipeline']:,.2f}",
+            f"{metrics['pipeline_growth']:.1%} vs last period"
+        )
+        st.metric(
+            "Qualified Pipeline",
+            f"${metrics['qualified_pipeline']:,.2f}",
+            f"{metrics['qualified_growth']:.1%} vs last period"
+        )
+    
+    with col2:
+        st.metric(
+            "Win Rate",
+            f"{metrics['win_rate']:.1%}",
+            f"{metrics['win_rate_change']:.1%} vs last period"
+        )
+        st.metric(
+            "Avg Deal Size",
+            f"${metrics['avg_deal_size']:,.2f}",
+            f"{metrics['deal_size_change']:.1%} vs last period"
+        )
+    
+    with col3:
+        st.metric(
+            "Pipeline Velocity",
+            f"{metrics['pipeline_velocity']:.1f} days",
+            f"{metrics['velocity_change']:.1%} vs last period"
+        )
+        st.metric(
+            "Late Stage Amount",
+            f"${metrics['late_stage_amount']:,.2f}",
+            f"{metrics['late_stage_growth']:.1%} vs last period"
+        )
+    
+    # Display pipeline by stage
+    st.subheader("Pipeline by Stage")
+    stage_pipeline = df.groupby('Stage')['Amount'].sum().reset_index()
+    stage_pipeline['Stage'] = stage_pipeline['Stage'].astype(str)
+    st.bar_chart(stage_pipeline.set_index('Stage'))
 
+# Rep Performance Tab
 with tab2:
-    display_rep_performance_tab(filtered_df)
+    display_rep_performance_tab(df)
 
+# Pipeline Analysis Tab
 with tab3:
-    display_pipeline_analysis_tab(filtered_df, metrics)
+    display_pipeline_analysis_tab(df)
 
+# Source Analysis Tab
 with tab4:
-    display_source_analysis_tab(filtered_df)
+    display_source_analysis_tab(df)
 
+# Email Controls Tab
 with tab5:
     display_email_controls()
 
 # Footer
 st.markdown("---")
-st.markdown("""
-    ### 🚀 Future Enhancements
-    - 🔄 Real-time Salesforce integration with automatic syncing
-    - 📊 Advanced pipeline forecasting with ML predictions
-    - 📱 Mobile-optimized view with responsive design
-    - 🎯 Custom KPI tracking and goal setting
-    - 📈 Advanced analytics and trend analysis
-    - 📧 Automated email digests and alerts
-    - 🔍 Advanced filtering and search capabilities
-    - 🤖 AI-powered opportunity scoring
-""")
+st.markdown("Built with ❤️ by Roadchimp")
 
 # Collapsible data source section
 with st.sidebar.expander("📥 Data Source", expanded=False):
