@@ -100,12 +100,12 @@ def send_digest(metrics, rep_performance, pipeline_health, date_range, recipient
     
     # Format metrics for display
     formatted_metrics = {
-        'total_pipeline': f"${metrics['total_pipeline']:,.2f}",
-        'qualified_pipeline': f"${metrics['qualified_pipeline']:,.2f}",
-        'late_stage_amount': f"${metrics['late_stage_amount']:,.2f}",
-        'win_rate': f"{metrics['win_rate']:.1%}",
-        'avg_deal_size': f"${metrics['avg_deal_size']:,.2f}",
-        'pipeline_velocity': f"{metrics['pipeline_velocity']:.1f} days"
+        'total_pipeline': metrics['total_pipeline'],
+        'qualified_pipeline': metrics['qualified_pipeline'],
+        'late_stage_amount': metrics['late_stage_amount'],
+        'win_rate': metrics['win_rate'],
+        'avg_deal_size': metrics['avg_deal_size'],
+        'pipeline_velocity': metrics['pipeline_velocity']
     }
     
     # Format rep performance
@@ -120,7 +120,7 @@ def send_digest(metrics, rep_performance, pipeline_health, date_range, recipient
         rep_performance=rep_performance.to_dict('records'),
         pipeline_health=pipeline_health,
         date_range=date_range,
-        current_date=datetime.now().strftime("%B %d, %Y")
+        generated_at=datetime.now().strftime("%B %d, %Y")
     )
     
     # Send email
@@ -137,23 +137,23 @@ def send_alert(alert_type, alert_data, threshold, recipients=None):
     # Format alert data based on type
     if alert_type == 'pipeline_drop':
         formatted_data = {
-            'current_value': f"${alert_data['current_value']:,.2f}",
-            'previous_value': f"${alert_data['previous_value']:,.2f}",
-            'drop_percentage': f"{alert_data['drop_percentage']:.1f}%"
+            'current_value': alert_data['current_value'],
+            'previous_value': alert_data['previous_value'],
+            'drop_percentage': alert_data['drop_percentage']
         }
         subject = "Pipeline Drop Alert"
     elif alert_type == 'aging_opportunities':
         formatted_data = {
             'count': alert_data['count'],
             'total_stage0': alert_data['total_stage0'],
-            'avg_age': f"{alert_data['avg_age']:.1f} days"
+            'avg_age': alert_data['avg_age']
         }
         subject = "Aging Opportunities Alert"
     else:  # rep_performance
         formatted_data = {
             'count': alert_data['count'],
-            'reps': ', '.join(alert_data['reps']),
-            'min_performance': f"{alert_data['min_performance']:.1%}"
+            'reps': alert_data['reps'],
+            'min_performance': alert_data['min_performance']
         }
         subject = "Rep Performance Alert"
     
@@ -162,7 +162,7 @@ def send_alert(alert_type, alert_data, threshold, recipients=None):
         alert_type=alert_type,
         alert_data=formatted_data,
         threshold=threshold,
-        current_date=datetime.now().strftime("%B %d, %Y")
+        generated_at=datetime.now().strftime("%B %d, %Y")
     )
     
     # Send email

@@ -60,8 +60,8 @@
                 ${{ "{:,.0f}".format(alert_data.current_value) }}
             {% elif alert_type == 'aging_opportunities' %}
                 {{ alert_data.count }} opportunities
-            {% else %}
-                {{ alert_data.value }}
+            {% elif alert_type == 'rep_performance' %}
+                {{ alert_data.count }} reps below target
             {% endif %}
         </div>
         <div class="alert-label">
@@ -69,8 +69,8 @@
                 Current Pipeline Value
             {% elif alert_type == 'aging_opportunities' %}
                 Opportunities Aged Over Threshold
-            {% else %}
-                Alert Value
+            {% elif alert_type == 'rep_performance' %}
+                Underperforming Reps
             {% endif %}
         </div>
     </div>
@@ -82,8 +82,8 @@
                 Pipeline has dropped below ${{ "{:,.0f}".format(threshold) }}
             {% elif alert_type == 'aging_opportunities' %}
                 {{ threshold }} days
-            {% else %}
-                {{ threshold }}
+            {% elif alert_type == 'rep_performance' %}
+                {{ "{:.0%}".format(threshold) }} of target
             {% endif %}
         </p>
     </div>
@@ -91,11 +91,16 @@
     <div class="alert-card">
         <h3>Additional Details</h3>
         <ul>
-            {% for key, value in alert_data.items() %}
-                {% if key not in ['current_value', 'value', 'count'] %}
-                    <li><strong>{{ key.replace('_', ' ').title() }}:</strong> {{ value }}</li>
-                {% endif %}
-            {% endfor %}
+            {% if alert_type == 'pipeline_drop' %}
+                <li><strong>Previous Value:</strong> ${{ "{:,.0f}".format(alert_data.previous_value) }}</li>
+                <li><strong>Drop Percentage:</strong> {{ "{:.1f}%".format(alert_data.drop_percentage) }}</li>
+            {% elif alert_type == 'aging_opportunities' %}
+                <li><strong>Total Stage 0:</strong> {{ alert_data.total_stage0 }} opportunities</li>
+                <li><strong>Average Age:</strong> {{ "{:.1f}".format(alert_data.avg_age) }} days</li>
+            {% elif alert_type == 'rep_performance' %}
+                <li><strong>Affected Reps:</strong> {{ ", ".join(alert_data.reps) }}</li>
+                <li><strong>Minimum Performance:</strong> {{ "{:.1%}".format(alert_data.min_performance) }}</li>
+            {% endif %}
         </ul>
     </div>
 
