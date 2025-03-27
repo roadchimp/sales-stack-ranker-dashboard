@@ -138,7 +138,7 @@ with tab1:
         )
     
     # AI Commentary Section
-    st.subheader("AI-Generated Insights")
+    st.subheader("Executive Summary")
     
     # Add a refresh button
     if st.button("Refresh Insights"):
@@ -157,26 +157,24 @@ with tab1:
     # Display the commentary with consistent styling
     st.markdown("""
         <style>
-        .ai-insights {
+        .executive-summary {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             line-height: 1.6;
-            color: #333;
+            padding: 1em;
+            background-color: #f8f9fa;
+            border-radius: 4px;
         }
-        .ai-insights h3 {
-            color: #1f77b4;
-            margin-top: 1.5em;
-            margin-bottom: 0.5em;
-        }
-        .ai-insights ul {
+        .executive-summary ul {
             list-style-type: none;
             padding-left: 0;
+            margin-top: 1em;
         }
-        .ai-insights li {
-            margin-bottom: 0.5em;
+        .executive-summary li {
+            margin-bottom: 1em;
             padding-left: 1.5em;
             position: relative;
         }
-        .ai-insights li:before {
+        .executive-summary li:before {
             content: "•";
             position: absolute;
             left: 0;
@@ -185,7 +183,7 @@ with tab1:
         </style>
     """, unsafe_allow_html=True)
     
-    st.markdown(f'<div class="ai-insights">{st.session_state.commentary}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="executive-summary">{st.session_state.commentary}</div>', unsafe_allow_html=True)
     
     # Display pipeline by stage
     st.subheader("Pipeline by Stage")

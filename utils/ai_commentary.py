@@ -38,7 +38,7 @@ def generate_commentary(df: pd.DataFrame, metrics: Dict[str, Union[float, int]])
         source_distribution = metrics['source_distribution']
         
         # Create prompt for OpenAI
-        prompt = f"""Analyze the following sales pipeline data and provide insights in a clear, bullet-point format:
+        prompt = f"""Analyze the following sales pipeline data and provide a concise executive summary:
 
 Key Metrics:
 - Total Pipeline: ${metrics['total_pipeline']:,.2f}
@@ -53,39 +53,23 @@ Stage Distribution:
 Source Distribution:
 {source_distribution}
 
-Please provide insights in the following format:
+Please provide a brief executive summary (3-4 bullet points) that highlights:
+1. The most important pipeline metrics and their implications
+2. Key areas of concern or risks
+3. Notable trends in the pipeline
 
-### Key Observations
-• [Observation 1]
-• [Observation 2]
-• [Observation 3]
-
-### Areas of Concern
-• [Concern 1]
-• [Concern 2]
-• [Concern 3]
-
-### Opportunities
-• [Opportunity 1]
-• [Opportunity 2]
-• [Opportunity 3]
-
-### Recommendations
-• [Recommendation 1]
-• [Recommendation 2]
-• [Recommendation 3]
-
-Use bullet points (•) for all items and maintain a consistent, professional tone."""
+Use bullet points (•) and keep the tone professional and concise. Focus on actionable insights.
+Do not include separate sections or headings."""
 
         # Generate commentary using OpenAI
         response = client.chat.completions.create(
             model="gpt-4-turbo-preview",
             messages=[
-                {"role": "system", "content": "You are a sales analytics expert providing clear, concise insights in a consistent bullet-point format."},
+                {"role": "system", "content": "You are a sales analytics expert providing clear, concise insights. Keep the format simple and consistent."},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.7,
-            max_tokens=500
+            max_tokens=300
         )
         
         # Extract and format the commentary
