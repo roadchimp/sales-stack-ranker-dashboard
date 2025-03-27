@@ -1,159 +1,139 @@
 """
-Rep performance component for Sales Stack Ranker dashboard.
+Rep performance component for the Sales Stack Ranker dashboard.
 """
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+from typing import Dict, Any
 
-def display_rep_performance_tab(filtered_df: pd.DataFrame) -> None:
+def display_rep_performance_tab(df: pd.DataFrame) -> None:
     """
-    Display the rep performance tab content.
+    Display the rep performance tab with charts and metrics.
     
     Args:
-        filtered_df (pd.DataFrame): Filtered DataFrame based on user selection
+        df: DataFrame containing pipeline data
     """
-    st.subheader("🎯 Percent-to-Plan and Rankings")
+    if df.empty:
+        st.warning("No data available for rep performance analysis.")
+        return
     
-    try:
-        # Calculate qualified pipeline per rep (opportunities Stage 2 or higher)
-        qualified_pipeline = filtered_df[filtered_df['Stage'] >= 2].groupby('Owner')['Amount'].sum().reset_index()
-        qualified_pipeline.columns = ['Owner', 'QualifiedPipeline']
-        
-        # Calculate actual attainment (Closed Won deals)
-        actual_attainment = filtered_df[filtered_df['Stage'] == 4].groupby('Owner')['Amount'].sum().reset_index()
-        actual_attainment.columns = ['Owner', 'Attainment']
-        
-        # Get unique owners and their targets
-        owner_targets = filtered_df.groupby('Owner')['PipelineTargetQTD'].first().reset_index()
-        owner_targets.columns = ['Owner', 'Target']
-        
-        # Merge qualified pipeline, attainment, and targets
-        rankings_df = pd.merge(qualified_pipeline, owner_targets, on='Owner', how='left')
-        rankings_df = pd.merge(rankings_df, actual_attainment, on='Owner', how='left')
-        rankings_df['Attainment'] = rankings_df['Attainment'].fillna(0)
-        
-        # Calculate percent to plan based on actual attainment
-        # Convert to numeric first to ensure proper calculation
-        rankings_df['Target'] = pd.to_numeric(rankings_df['Target'])
-        rankings_df['Attainment'] = pd.to_numeric(rankings_df['Attainment'])
-        rankings_df['PercentToPlan'] = (rankings_df['Attainment'] / rankings_df['Target']) * 100
-        
-        # Sort by percent to plan descending
-        rankings_df = rankings_df.sort_values('PercentToPlan', ascending=False)
-        
-        # Create a copy for metrics calculation before formatting
-        metrics_df = rankings_df.copy()
-        
-        # Format the numeric columns
-        rankings_df['QualifiedPipeline'] = rankings_df['QualifiedPipeline'].apply(lambda x: f"${x:,.0f}")
-        rankings_df['Target'] = rankings_df['Target'].apply(lambda x: f"${x:,.0f}")
-        rankings_df['Attainment'] = rankings_df['Attainment'].apply(lambda x: f"${x:,.0f}")
-        rankings_df['PercentToPlan'] = rankings_df['PercentToPlan'].apply(lambda x: f"{x:.1f}")
-        
-        # Add rank column
-        rankings_df.insert(0, 'Rank', range(1, len(rankings_df) + 1))
-        
-        # Display summary metrics
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            above_plan = (metrics_df['PercentToPlan'] >= 100).sum()
-            st.metric("Reps Above Plan", f"{above_plan}", f"{(above_plan/len(rankings_df))*100:.1f}% of team")
-        
-        with col2:
-            avg_attainment = metrics_df['PercentToPlan'].mean()
-            st.metric("Average Attainment", f"{avg_attainment:.1f}%", "of target")
-        
-        with col3:
-            median_attainment = metrics_df['PercentToPlan'].median()
-            st.metric("Median Attainment", f"{median_attainment:.1f}%", "of target")
-        
-        # Rename columns for display
-        rankings_df.columns = ['Rank', 'Sales Rep', 'Qualified Pipeline', 'Target', 'Attainment', 'Percent to Plan']
-        
-        # Display the rankings table
-        st.dataframe(
-            rankings_df,
-            column_config={
-                "Rank": st.column_config.NumberColumn(
-                    "🏆 Rank",
-                    help="Sales rep ranking based on percent to plan",
-                    format="%d"
-                ),
-                "Sales Rep": st.column_config.TextColumn(
-                    "👤 Sales Rep",
-                    help="Name of the sales representative"
-                ),
-                "Qualified Pipeline": st.column_config.TextColumn(
-                    "💰 Qualified Pipeline",
-                    help="Sum of opportunity amounts in Stage 2 or higher"
-                ),
-                "Target": st.column_config.TextColumn(
-                    "🎯 Target",
-                    help="Pipeline creation target for the quarter"
-                ),
-                "Attainment": st.column_config.TextColumn(
-                    "✅ Attainment",
-                    help="Total closed/won business"
-                ),
-                "Percent to Plan": st.column_config.ProgressColumn(
-                    "📊 Percent to Plan",
-                    help="Percentage of target achieved (Attainment / Target)",
-                    format="%.1f%%",
-                    min_value=0,
-                    max_value=200
-                )
-            },
-            hide_index=True,
-            use_container_width=True
-        )
-        
-        # Add a download button for the rankings
-        csv = rankings_df.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label="📥 Download Rankings",
-            data=csv,
-            file_name="sales_rankings.csv",
-            mime="text/csv"
-        )
-        
-        # Top Performers Highlight
-        st.subheader("🌟 Top Performers")
-        top_3_df = rankings_df.head(3)
-        
-        cols = st.columns(3)
-        for idx, (_, row) in enumerate(top_3_df.iterrows()):
-            with cols[idx]:
-                st.markdown(f"""
-                #### {['🥇', '🥈', '🥉'][idx]} {row['Sales Rep']}
-                - Qualified Pipeline: {row['Qualified Pipeline']}
-                - Target: {row['Target']}
-                - Attainment: {row['Attainment']}
-                - Percent to Plan: {row['Percent to Plan']}%
-                """)
-        
-        # Create a histogram of percent to plan distribution
-        percent_to_plan_values = metrics_df['PercentToPlan']
-        
-        fig = px.histogram(
-            percent_to_plan_values,
-            nbins=10,
-            title='Distribution of Percent to Plan',
-            labels={'value': 'Percent to Plan', 'count': 'Number of Reps'},
-        )
-        fig.update_layout(
-            xaxis_title="Percent to Plan",
-            yaxis_title="Number of Reps",
-            showlegend=False,
-            height=300,
-            margin=dict(l=10, r=10, t=30, b=10),
-            autosize=True
-        )
-        fig.update_traces(
-            hovertemplate="Percent to Plan: %{x:.1f}%<br>Number of Reps: %{y}"
-        )
-        st.plotly_chart(fig, use_container_width=True)
-        
-    except Exception as e:
-        st.error(f"Error calculating rankings: {str(e)}")
-        st.write("Unable to display rankings. Please check your data and try again.") 
+    # Rep Performance Section
+    st.subheader("Rep Performance")
+    
+    # Calculate rep metrics
+    rep_metrics = df.groupby('OwnerName').agg({
+        'Amount': ['sum', 'count', 'mean'],
+        'Stage': lambda x: (x >= 3).mean(),  # Qualified pipeline percentage
+        'CreatedDate': lambda x: (pd.Timestamp.now() - x).mean().days  # Average age
+    }).reset_index()
+    
+    rep_metrics.columns = ['Rep', 'Total Amount', 'Deal Count', 'Avg Deal Size', 'Qualified %', 'Avg Age']
+    
+    # Display rep metrics table
+    st.markdown("### Rep Metrics")
+    st.dataframe(
+        rep_metrics.style.format({
+            'Total Amount': '${:,.2f}',
+            'Deal Count': '{:,.0f}',
+            'Avg Deal Size': '${:,.2f}',
+            'Qualified %': '{:.1%}',
+            'Avg Age': '{:.1f}'
+        }),
+        use_container_width=True
+    )
+    
+    # Rep Pipeline Distribution
+    st.subheader("Pipeline Distribution by Rep")
+    
+    # Create rep distribution DataFrame
+    rep_df = pd.DataFrame({
+        'Rep': rep_metrics['Rep'],
+        'Amount': rep_metrics['Total Amount'],
+        'Percentage': (rep_metrics['Total Amount'] / rep_metrics['Total Amount'].sum() * 100).round(1)
+    })
+    
+    # Create bar chart with percentages
+    fig = px.bar(
+        rep_df,
+        x='Rep',
+        y=['Amount', 'Percentage'],
+        barmode='group',
+        title='Pipeline Distribution by Rep'
+    )
+    
+    fig.update_layout(
+        yaxis_title='Amount ($)',
+        yaxis2_title='Percentage (%)',
+        showlegend=True
+    )
+    
+    st.plotly_chart(fig, use_container_width=True)
+    
+    # Rep Performance by Stage
+    st.subheader("Rep Performance by Stage")
+    
+    # Create stage distribution by rep
+    stage_rep_df = pd.crosstab(df['OwnerName'], df['Stage'], values=df['Amount'], aggfunc='sum')
+    
+    # Create stacked bar chart
+    fig = px.bar(
+        stage_rep_df,
+        title='Pipeline Distribution by Rep and Stage'
+    )
+    
+    fig.update_layout(
+        xaxis_title='Rep',
+        yaxis_title='Amount ($)',
+        barmode='stack'
+    )
+    
+    st.plotly_chart(fig, use_container_width=True)
+    
+    # Rep Conversion Analysis
+    st.subheader("Rep Conversion Analysis")
+    
+    # Calculate conversion metrics
+    conversion_metrics = df.groupby('OwnerName').agg({
+        'Stage': lambda x: (x == 4).mean()  # Win rate
+    }).reset_index()
+    
+    conversion_metrics.columns = ['Rep', 'Win Rate']
+    
+    # Create conversion chart
+    fig = px.bar(
+        conversion_metrics,
+        x='Rep',
+        y='Win Rate',
+        title='Win Rate by Rep'
+    )
+    
+    fig.update_layout(
+        yaxis_title='Win Rate',
+        yaxis_tickformat='.1%'
+    )
+    
+    st.plotly_chart(fig, use_container_width=True)
+    
+    # Rep Pipeline Aging
+    st.subheader("Rep Pipeline Aging")
+    
+    # Calculate aging metrics
+    aging_metrics = df.groupby('OwnerName').agg({
+        'CreatedDate': lambda x: (pd.Timestamp.now() - x).mean().days
+    }).reset_index()
+    
+    aging_metrics.columns = ['Rep', 'Avg Age']
+    
+    # Create aging chart
+    fig = px.bar(
+        aging_metrics,
+        x='Rep',
+        y='Avg Age',
+        title='Average Pipeline Age by Rep'
+    )
+    
+    fig.update_layout(
+        yaxis_title='Average Age (days)'
+    )
+    
+    st.plotly_chart(fig, use_container_width=True) 

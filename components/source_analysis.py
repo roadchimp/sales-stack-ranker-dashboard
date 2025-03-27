@@ -1,86 +1,113 @@
 """
-Source analysis component for Sales Stack Ranker dashboard.
+Source analysis component for the Sales Stack Ranker dashboard.
 """
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from typing import Literal
+from typing import Dict, Any
 
-def display_source_analysis_tab(filtered_df: pd.DataFrame) -> None:
+def display_source_analysis_tab(df: pd.DataFrame) -> None:
     """
-    Display the source analysis tab content.
+    Display the source analysis tab with charts and metrics.
     
     Args:
-        filtered_df (pd.DataFrame): Filtered DataFrame based on user selection
+        df: DataFrame containing pipeline data
     """
-    st.subheader("📈 Pipeline Sources Analysis")
+    if df.empty:
+        st.warning("No data available for source analysis.")
+        return
     
-    try:
-        # Add toggle for pipeline type
-        pipeline_type: Literal["Qualified Pipeline", "Total Pipeline"] = st.radio(
-            "Select Pipeline Type",
-            ["Qualified Pipeline", "Total Pipeline"],
-            horizontal=True
-        )
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            # Calculate pipeline by source based on selection
-            if pipeline_type == "Qualified Pipeline":
-                source_pipeline = filtered_df.groupby('Source')['QualifiedPipeQTD'].sum().reset_index()
-                value_col = 'QualifiedPipeQTD'
-                title = 'Qualified Pipeline by Source'
-            else:
-                source_pipeline = filtered_df.groupby('Source')['Amount'].sum().reset_index()
-                value_col = 'Amount'
-                title = 'Total Pipeline by Source'
-            
-            source_pipeline = source_pipeline.sort_values(value_col, ascending=True)
-            
-            fig_source = px.bar(
-                source_pipeline,
-                x=value_col,
-                y='Source',
-                orientation='h',
-                title=title,
-                labels={value_col: 'Pipeline Amount ($)', 'Source': 'Source'},
-            )
-            
-            fig_source.update_traces(
-                texttemplate='$%{x:,.0f}',
-                textposition='outside'
-            )
-            fig_source.update_layout(
-                xaxis_title="Pipeline Amount ($)",
-                yaxis_title="Source",
-                showlegend=False,
-                height=300,
-                margin=dict(l=10, r=10, t=30, b=10),
-                autosize=True
-            )
-            st.plotly_chart(fig_source, use_container_width=True)
-        
-        with col2:
-            # Create a summary table with percentages
-            total_amount = source_pipeline[value_col].sum()
-            source_summary = source_pipeline.copy()
-            source_summary['Percentage'] = (source_summary[value_col] / total_amount * 100)
-            source_summary[value_col] = source_summary[value_col].apply(lambda x: f"${x:,.0f}")
-            source_summary['Percentage'] = source_summary['Percentage'].apply(lambda x: f"{x:.1f}%")
-            source_summary.columns = ['Source', 'Pipeline Amount', 'Percentage of Total']
-            
-            st.markdown("### Source Breakdown")
-            st.dataframe(
-                source_summary,
-                column_config={
-                    "Source": st.column_config.TextColumn("Source"),
-                    "Pipeline Amount": st.column_config.TextColumn("Pipeline Amount"),
-                    "Percentage of Total": st.column_config.TextColumn("% of Total")
-                },
-                use_container_width=True
-            )
+    # Source Performance Section
+    st.subheader("Source Performance")
     
-    except Exception as e:
-        st.error(f"Error analyzing pipeline sources: {str(e)}")
-        st.write("Unable to display source analysis. Please check your data and try again.") 
+    # Calculate source metrics
+    source_metrics = df.groupby('Source').agg({
+        'Amount': ['sum', 'count', 'mean'],
+        'Stage': lambda x: (x >= 3).mean()  # Qualified pipeline percentage
+    }).reset_index()
+    
+    source_metrics.columns = ['Source', 'Total Amount', 'Deal Count', 'Avg Deal Size', 'Qualified %']
+    
+    # Display source metrics table
+    st.markdown("### Source Metrics")
+    st.dataframe(
+        source_metrics.style.format({
+            'Total Amount': '${:,.2f}',
+            'Deal Count': '{:,.0f}',
+            'Avg Deal Size': '${:,.2f}',
+            'Qualified %': '{:.1%}'
+        }),
+        use_container_width=True
+    )
+    
+    # Source Distribution Chart
+    st.subheader("Pipeline Distribution by Source")
+    
+    # Create source distribution DataFrame
+    source_df = pd.DataFrame({
+        'Source': source_metrics['Source'],
+        'Amount': source_metrics['Total Amount'],
+        'Percentage': (source_metrics['Total Amount'] / source_metrics['Total Amount'].sum() * 100).round(1)
+    })
+    
+    # Create bar chart with percentages
+    fig = px.bar(
+        source_df,
+        x='Source',
+        y=['Amount', 'Percentage'],
+        barmode='group',
+        title='Pipeline Distribution by Source'
+    )
+    
+    fig.update_layout(
+        yaxis_title='Amount ($)',
+        yaxis2_title='Percentage (%)',
+        showlegend=True
+    )
+    
+    st.plotly_chart(fig, use_container_width=True)
+    
+    # Source Performance by Stage
+    st.subheader("Source Performance by Stage")
+    
+    # Create stage distribution by source
+    stage_source_df = pd.crosstab(df['Source'], df['Stage'], values=df['Amount'], aggfunc='sum')
+    
+    # Create stacked bar chart
+    fig = px.bar(
+        stage_source_df,
+        title='Pipeline Distribution by Source and Stage'
+    )
+    
+    fig.update_layout(
+        xaxis_title='Source',
+        yaxis_title='Amount ($)',
+        barmode='stack'
+    )
+    
+    st.plotly_chart(fig, use_container_width=True)
+    
+    # Source Conversion Analysis
+    st.subheader("Source Conversion Analysis")
+    
+    # Calculate conversion metrics
+    conversion_metrics = df.groupby('Source').agg({
+        'Stage': lambda x: (x == 4).mean()  # Win rate
+    }).reset_index()
+    
+    conversion_metrics.columns = ['Source', 'Win Rate']
+    
+    # Create conversion chart
+    fig = px.bar(
+        conversion_metrics,
+        x='Source',
+        y='Win Rate',
+        title='Win Rate by Source'
+    )
+    
+    fig.update_layout(
+        yaxis_title='Win Rate',
+        yaxis_tickformat='.1%'
+    )
+    
+    st.plotly_chart(fig, use_container_width=True) 

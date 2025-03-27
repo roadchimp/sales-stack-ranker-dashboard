@@ -1,94 +1,65 @@
 """
-Metrics calculation utilities for Sales Stack Ranker dashboard.
+Utility functions for calculating pipeline metrics.
 """
 import pandas as pd
-from typing import Dict, Union, Any
-from datetime import datetime, timedelta
+from typing import Dict, Any
 
-def get_pipeline_metrics(df: pd.DataFrame) -> Dict[str, Union[float, int]]:
+def get_pipeline_metrics(df: pd.DataFrame) -> Dict[str, Any]:
     """
-    Calculate key pipeline metrics.
+    Calculate key pipeline metrics from the DataFrame.
     
     Args:
-        df (pd.DataFrame): Input DataFrame with pipeline data
+        df: DataFrame containing pipeline data
         
     Returns:
-        Dict[str, Union[float, int]]: Dictionary of calculated metrics
+        Dictionary containing calculated metrics
     """
     if df.empty:
         return {
             'total_pipeline': 0,
             'qualified_pipeline': 0,
-            'late_stage_amount': 0,
             'win_rate': 0,
             'avg_deal_size': 0,
-            'pipeline_velocity': 0
+            'pipeline_velocity': 0,
+            'late_stage_amount': 0,
+            'stage_distribution': {},
+            'source_distribution': {}
         }
     
-    try:
-        # Calculate total pipeline
-        total_pipeline = df['Amount'].sum()
-        
-        # Calculate qualified pipeline (stages 2-4)
-        qualified_pipeline = df[df['Stage'] >= 2]['Amount'].sum()
-        
-        # Calculate late stage amount (stages 3-4)
-        late_stage_amount = df[df['Stage'] >= 3]['Amount'].sum()
-        
-        # Calculate win rate (stage 4 deals / total deals)
-        total_deals = len(df)
-        won_deals = len(df[df['Stage'] == 4])
-        win_rate = won_deals / total_deals if total_deals > 0 else 0
-        
-        # Calculate average deal size
-        avg_deal_size = df['Amount'].mean() if not df.empty else 0
-        
-        # Calculate pipeline velocity (average days in pipeline)
-        pipeline_velocity = df['AvgAge'].mean() if not df.empty else 0
-        
-        # Calculate late stage percentage
-        late_stage_percentage = (
-            (late_stage_amount / total_pipeline * 100)
-            if total_pipeline > 0 else 0.0
-        )
-        
-        # Calculate Stage 0 metrics
-        stage_0_df = df[df['Stage'] == 0]
-        if not stage_0_df.empty:
-            avg_stage_0_age = stage_0_df['Stage0Age'].mean()
-        
-        # Calculate pipeline by source
-        pipeline_by_source = (
-            df.groupby('Source')['Amount']
-            .sum()
-            .round(2)
-            .to_dict()
-        )
-        
-        # Round all numeric metrics for consistency
-        for key in [total_pipeline, qualified_pipeline, late_stage_amount, win_rate, avg_deal_size, pipeline_velocity, late_stage_percentage, avg_stage_0_age]:
-            if isinstance(key, (float, int)):
-                key = round(float(key), 2)
-        
-        return {
-            'total_pipeline': total_pipeline,
-            'qualified_pipeline': qualified_pipeline,
-            'late_stage_amount': late_stage_amount,
-            'win_rate': win_rate,
-            'avg_deal_size': avg_deal_size,
-            'pipeline_velocity': pipeline_velocity,
-            'late_stage_percentage': late_stage_percentage,
-            'avg_stage_0_age': avg_stage_0_age,
-            'pipeline_by_source': pipeline_by_source
-        }
-        
-    except Exception as e:
-        print(f"Error calculating metrics: {str(e)}")
-        return {
-            'total_pipeline': 0,
-            'qualified_pipeline': 0,
-            'late_stage_amount': 0,
-            'win_rate': 0,
-            'avg_deal_size': 0,
-            'pipeline_velocity': 0
-        } 
+    # Calculate total pipeline
+    total_pipeline = df['Amount'].sum()
+    
+    # Calculate qualified pipeline (stages 3 and 4)
+    qualified_pipeline = df[df['Stage'] >= 3]['Amount'].sum()
+    
+    # Calculate win rate (stage 4 deals / total deals)
+    total_deals = len(df)
+    won_deals = len(df[df['Stage'] == 4])
+    win_rate = won_deals / total_deals if total_deals > 0 else 0
+    
+    # Calculate average deal size
+    avg_deal_size = df['Amount'].mean() if not df.empty else 0
+    
+    # Calculate pipeline velocity (average days in pipeline)
+    df['DaysInPipeline'] = (pd.Timestamp.now() - df['CreatedDate']).dt.days
+    pipeline_velocity = df['DaysInPipeline'].mean() if not df.empty else 0
+    
+    # Calculate late stage amount (stages 3 and 4)
+    late_stage_amount = df[df['Stage'] >= 3]['Amount'].sum()
+    
+    # Calculate stage distribution
+    stage_distribution = df.groupby('Stage')['Amount'].sum().to_dict()
+    
+    # Calculate source distribution
+    source_distribution = df.groupby('Source')['Amount'].sum().to_dict()
+    
+    return {
+        'total_pipeline': total_pipeline,
+        'qualified_pipeline': qualified_pipeline,
+        'win_rate': win_rate,
+        'avg_deal_size': avg_deal_size,
+        'pipeline_velocity': pipeline_velocity,
+        'late_stage_amount': late_stage_amount,
+        'stage_distribution': stage_distribution,
+        'source_distribution': source_distribution
+    } 

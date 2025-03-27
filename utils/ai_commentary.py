@@ -1,53 +1,98 @@
 """
-AI commentary generation utilities for Sales Stack Ranker dashboard.
+AI commentary utilities for generating insights using OpenAI.
 """
-import os
-from openai import OpenAI
+import streamlit as st
+import pandas as pd
 from typing import Dict, Union
+from openai import OpenAI
+from datetime import datetime
 
-def get_openai_api_key() -> str:
-    """Get OpenAI API key from environment variable."""
-    api_key = os.getenv('OPENAI_API_KEY')
-    if not api_key:
-        raise ValueError("OpenAI API key not found. Please set OPENAI_API_KEY environment variable.")
-    return api_key
+def get_openai_client():
+    """Get OpenAI client with API key from Streamlit secrets."""
+    if 'openai' not in st.secrets:
+        raise ValueError("OpenAI API key not found in Streamlit secrets")
+    
+    return OpenAI(api_key=st.secrets['openai']['OPENAI_API_KEY'])
 
-def generate_commentary(metrics: Dict[str, Union[float, int]]) -> str:
+def generate_commentary(df: pd.DataFrame, metrics: Dict[str, Union[float, int]]) -> str:
     """
-    Generate AI commentary based on pipeline metrics.
+    Generate AI commentary on pipeline metrics and trends.
     
     Args:
+        df (pd.DataFrame): Input DataFrame with pipeline data
         metrics (Dict[str, Union[float, int]]): Dictionary of pipeline metrics
         
     Returns:
-        str: Generated commentary
+        str: Generated commentary in markdown format
     """
     try:
-        # Initialize OpenAI client with API key
-        client = OpenAI(api_key=get_openai_api_key())
+        # Get OpenAI client
+        client = get_openai_client()
         
-        # Create summary text from metrics
-        summary = f"""The total sales pipeline is currently valued at ${metrics['total_pipeline']:,.0f}, which indicates the total potential revenue from all opportunities in the pipeline.
-
-The Qualified Pipeline for the quarter to date (QTD) is ${metrics['qualified_pipeline']:,.0f}. This represents opportunities that have been qualified and are likely to close.
-
-The Late Stage Pipeline, which stands at ${metrics['late_stage_pipeline']:,.0f}, represents opportunities in the final stages of the sales process. This figure is {metrics['late_stage_pipeline']/metrics['qualified_pipeline']:.1f} times the value of the qualified pipeline.
-
-The Average Stage 0 Age is {metrics['avg_stage_0_age']:.1f} days, which indicates the average time opportunities spend in the initial prospecting stage."""
+        # Prepare data for analysis
+        stage_distribution = df.groupby('Stage')['Amount'].sum().to_dict()
+        source_distribution = metrics['pipeline_by_source']
         
+        # Create prompt for OpenAI
+        prompt = f"""Analyze the following sales pipeline data and provide insights in a clear, bullet-point format:
+
+Key Metrics:
+- Total Pipeline: ${metrics['total_pipeline']:,.2f}
+- Qualified Pipeline: ${metrics['qualified_pipeline']:,.2f}
+- Win Rate: {metrics['win_rate']:.1%}
+- Average Deal Size: ${metrics['avg_deal_size']:,.2f}
+- Pipeline Velocity: {metrics['pipeline_velocity']:.1f} days
+
+Stage Distribution:
+{stage_distribution}
+
+Source Distribution:
+{source_distribution}
+
+Please provide insights in the following format:
+
+### Key Observations
+• [Observation 1]
+• [Observation 2]
+• [Observation 3]
+
+### Areas of Concern
+• [Concern 1]
+• [Concern 2]
+• [Concern 3]
+
+### Opportunities
+• [Opportunity 1]
+• [Opportunity 2]
+• [Opportunity 3]
+
+### Recommendations
+• [Recommendation 1]
+• [Recommendation 2]
+• [Recommendation 3]
+
+Use bullet points (•) for all items and maintain a consistent, professional tone."""
+
         # Generate commentary using OpenAI
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4-turbo-preview",
             messages=[
-                {"role": "system", "content": "You are a sales analytics expert. Analyze the pipeline metrics and provide insights in a clear, professional manner."},
-                {"role": "user", "content": f"Please analyze these sales pipeline metrics and provide key insights:\n\n{summary}"}
+                {"role": "system", "content": "You are a sales analytics expert providing clear, concise insights in a consistent bullet-point format."},
+                {"role": "user", "content": prompt}
             ],
-            max_tokens=250,
-            temperature=0.7
+            temperature=0.7,
+            max_tokens=500
         )
         
-        # Extract and return the generated commentary
-        return response.choices[0].message.content
+        # Extract and format the commentary
+        commentary = response.choices[0].message.content
+        
+        # Add timestamp
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        commentary = f"*Generated on {timestamp}*\n\n{commentary}"
+        
+        return commentary
         
     except Exception as e:
-        return f"Error generating commentary: {str(e)}" 
+        print(f"Error generating commentary: {str(e)}")
+        return "Unable to generate insights at this time. Please check your OpenAI API configuration." 

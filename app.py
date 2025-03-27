@@ -10,10 +10,12 @@ from components.pipeline_analysis import display_pipeline_analysis_tab
 from components.rep_performance import display_rep_performance_tab
 from components.source_analysis import display_source_analysis_tab
 from components.email_controls import display_email_controls
+from components.ai_commentary import display_ai_commentary_tab
 
 # Import utilities
 from utils.data_loader import load_data, load_csv_data, get_required_columns
 from utils.metrics_calculator import get_pipeline_metrics
+from utils.ai_commentary import generate_commentary
 
 # Set page config (must be called before any other Streamlit command)
 st.set_page_config(
@@ -26,7 +28,7 @@ st.set_page_config(
 with open(Path(__file__).parent / "styles" / "custom.css") as css_file:
     st.markdown(f"<style>{css_file.read()}</style>", unsafe_allow_html=True)
 
-# Initialize session state for data
+# Initialize session state for data and commentary
 if 'df' not in st.session_state:
     try:
         st.session_state.df = load_data()
@@ -35,6 +37,9 @@ if 'df' not in st.session_state:
     except Exception as e:
         st.error(f"Error initializing data: {str(e)}")
         st.session_state.df = pd.DataFrame(columns=get_required_columns().keys())
+
+if 'commentary' not in st.session_state:
+    st.session_state.commentary = None
 
 # Use the session state DataFrame
 df = st.session_state.df
@@ -131,6 +136,56 @@ with tab1:
             "Late Stage Amount",
             f"${metrics['late_stage_amount']:,.2f}"
         )
+    
+    # AI Commentary Section
+    st.subheader("AI-Generated Insights")
+    
+    # Add a refresh button
+    if st.button("Refresh Insights"):
+        st.session_state.commentary = None
+    
+    if st.session_state.commentary is None:
+        with st.spinner("Generating insights..."):
+            try:
+                # Generate commentary
+                commentary = generate_commentary(filtered_df, metrics)
+                st.session_state.commentary = commentary
+            except Exception as e:
+                st.error(f"Error generating insights: {str(e)}")
+                st.session_state.commentary = "Unable to generate insights at this time."
+    
+    # Display the commentary with consistent styling
+    st.markdown("""
+        <style>
+        .ai-insights {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        .ai-insights h3 {
+            color: #1f77b4;
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+        }
+        .ai-insights ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        .ai-insights li {
+            margin-bottom: 0.5em;
+            padding-left: 1.5em;
+            position: relative;
+        }
+        .ai-insights li:before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: #1f77b4;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+    
+    st.markdown(f'<div class="ai-insights">{st.session_state.commentary}</div>', unsafe_allow_html=True)
     
     # Display pipeline by stage
     st.subheader("Pipeline by Stage")
