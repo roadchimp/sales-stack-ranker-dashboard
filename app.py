@@ -108,37 +108,31 @@ with tab1:
     with col1:
         st.metric(
             "Total Pipeline",
-            f"${metrics['total_pipeline']:,.2f}",
-            f"{metrics['pipeline_growth']:.1%} vs last period"
+            f"${metrics['total_pipeline']:,.2f}"
         )
         st.metric(
             "Qualified Pipeline",
-            f"${metrics['qualified_pipeline']:,.2f}",
-            f"{metrics['qualified_growth']:.1%} vs last period"
+            f"${metrics['qualified_pipeline']:,.2f}"
         )
     
     with col2:
         st.metric(
             "Win Rate",
-            f"{metrics['win_rate']:.1%}",
-            f"{metrics['win_rate_change']:.1%} vs last period"
+            f"{metrics['win_rate']:.1%}"
         )
         st.metric(
             "Avg Deal Size",
-            f"${metrics['avg_deal_size']:,.2f}",
-            f"{metrics['deal_size_change']:.1%} vs last period"
+            f"${metrics['avg_deal_size']:,.2f}"
         )
     
     with col3:
         st.metric(
             "Pipeline Velocity",
-            f"{metrics['pipeline_velocity']:.1f} days",
-            f"{metrics['velocity_change']:.1%} vs last period"
+            f"{metrics['pipeline_velocity']:.1f} days"
         )
         st.metric(
             "Late Stage Amount",
-            f"${metrics['late_stage_amount']:,.2f}",
-            f"{metrics['late_stage_growth']:.1%} vs last period"
+            f"${metrics['late_stage_amount']:,.2f}"
         )
     
     # Display pipeline by stage
