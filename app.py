@@ -12,6 +12,8 @@ from components.overview_tab import display_overview_tab
 from components.rep_performance import display_rep_performance_tab
 from components.pipeline_analysis import display_pipeline_analysis_tab
 from components.source_analysis import display_source_analysis_tab
+from components.ai_commentary import display_ai_commentary_tab
+from components.email_controls import display_email_controls
 
 # Import utilities
 from utils.data_loader import load_data, load_csv_data, get_required_columns
@@ -93,11 +95,12 @@ except Exception as e:
 display_key_metrics(metrics, filtered_df, late_stage_deals, won_deals)
 
 # Create tabs
-tab1, tab2, tab3, tab4 = st.tabs([
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📈 Overview",
     "👥 Reps",
     "🔍 Pipeline",
-    "📊 Sources"
+    "📊 Sources",
+    "📧 Email Controls"
 ])
 
 # Display tab contents
@@ -112,6 +115,9 @@ with tab3:
 
 with tab4:
     display_source_analysis_tab(filtered_df)
+
+with tab5:
+    display_email_controls()
 
 # Footer
 st.markdown("---")

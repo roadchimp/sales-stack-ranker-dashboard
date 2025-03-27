@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #fff3cd;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .alert-card {
+            background-color: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        .alert-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #dc3545;
+        }
+        .alert-label {
+            color: #6c757d;
+            font-size: 14px;
+        }
+        .threshold {
+            background-color: #e9ecef;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
+            font-size: 12px;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Sales Pipeline Alert</h1>
+        <h2>{{ alert_type.replace('_', ' ').title() }}</h2>
+        <p>Generated on: {{ generated_at }}</p>
+    </div>
+
+    <div class="alert-card">
+        <div class="alert-value">
+            {% if alert_type == 'pipeline_drop' %}
+                ${{ "{:,.0f}".format(alert_data.current_value) }}
+            {% elif alert_type == 'aging_opportunities' %}
+                {{ alert_data.count }} opportunities
+            {% else %}
+                {{ alert_data.value }}
+            {% endif %}
+        </div>
+        <div class="alert-label">
+            {% if alert_type == 'pipeline_drop' %}
+                Current Pipeline Value
+            {% elif alert_type == 'aging_opportunities' %}
+                Opportunities Aged Over Threshold
+            {% else %}
+                Alert Value
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="threshold">
+        <h3>Alert Threshold</h3>
+        <p>
+            {% if alert_type == 'pipeline_drop' %}
+                Pipeline has dropped below ${{ "{:,.0f}".format(threshold) }}
+            {% elif alert_type == 'aging_opportunities' %}
+                {{ threshold }} days
+            {% else %}
+                {{ threshold }}
+            {% endif %}
+        </p>
+    </div>
+
+    <div class="alert-card">
+        <h3>Additional Details</h3>
+        <ul>
+            {% for key, value in alert_data.items() %}
+                {% if key not in ['current_value', 'value', 'count'] %}
+                    <li><strong>{{ key.replace('_', ' ').title() }}:</strong> {{ value }}</li>
+                {% endif %}
+            {% endfor %}
+        </ul>
+    </div>
+
+    <div class="footer">
+        <p>This is an automated alert from the Sales Stack Ranker dashboard.</p>
+    </div>
+</body>
+</html> 
