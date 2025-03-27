@@ -12,7 +12,11 @@ def get_openai_client():
     if 'openai' not in st.secrets:
         raise ValueError("OpenAI API key not found in Streamlit secrets")
     
-    return OpenAI(api_key=st.secrets['openai']['OPENAI_API_KEY'])
+    api_key = st.secrets['openai']['OPENAI_API_KEY']
+    if not api_key or api_key == "your_openai_api_key_here":
+        raise ValueError("Please configure your OpenAI API key in Streamlit secrets")
+    
+    return OpenAI(api_key=api_key)
 
 def generate_commentary(df: pd.DataFrame, metrics: Dict[str, Union[float, int]]) -> str:
     """
@@ -31,7 +35,7 @@ def generate_commentary(df: pd.DataFrame, metrics: Dict[str, Union[float, int]])
         
         # Prepare data for analysis
         stage_distribution = df.groupby('Stage')['Amount'].sum().to_dict()
-        source_distribution = metrics['pipeline_by_source']
+        source_distribution = metrics['source_distribution']
         
         # Create prompt for OpenAI
         prompt = f"""Analyze the following sales pipeline data and provide insights in a clear, bullet-point format:

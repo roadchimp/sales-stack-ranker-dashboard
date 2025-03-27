@@ -21,7 +21,7 @@ def display_rep_performance_tab(df: pd.DataFrame) -> None:
     st.subheader("Rep Performance")
     
     # Calculate rep metrics
-    rep_metrics = df.groupby('OwnerName').agg({
+    rep_metrics = df.groupby('Owner').agg({
         'Amount': ['sum', 'count', 'mean'],
         'Stage': lambda x: (x >= 3).mean(),  # Qualified pipeline percentage
         'CreatedDate': lambda x: (pd.Timestamp.now() - x).mean().days  # Average age
@@ -73,7 +73,7 @@ def display_rep_performance_tab(df: pd.DataFrame) -> None:
     st.subheader("Rep Performance by Stage")
     
     # Create stage distribution by rep
-    stage_rep_df = pd.crosstab(df['OwnerName'], df['Stage'], values=df['Amount'], aggfunc='sum')
+    stage_rep_df = pd.crosstab(df['Owner'], df['Stage'], values=df['Amount'], aggfunc='sum')
     
     # Create stacked bar chart
     fig = px.bar(
@@ -93,7 +93,7 @@ def display_rep_performance_tab(df: pd.DataFrame) -> None:
     st.subheader("Rep Conversion Analysis")
     
     # Calculate conversion metrics
-    conversion_metrics = df.groupby('OwnerName').agg({
+    conversion_metrics = df.groupby('Owner').agg({
         'Stage': lambda x: (x == 4).mean()  # Win rate
     }).reset_index()
     
@@ -118,7 +118,7 @@ def display_rep_performance_tab(df: pd.DataFrame) -> None:
     st.subheader("Rep Pipeline Aging")
     
     # Calculate aging metrics
-    aging_metrics = df.groupby('OwnerName').agg({
+    aging_metrics = df.groupby('Owner').agg({
         'CreatedDate': lambda x: (pd.Timestamp.now() - x).mean().days
     }).reset_index()
     
