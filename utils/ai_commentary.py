@@ -27,7 +27,7 @@ def generate_commentary(df: pd.DataFrame, metrics: Dict[str, Union[float, int]])
         metrics (Dict[str, Union[float, int]]): Dictionary of pipeline metrics
         
     Returns:
-        str: Generated commentary in markdown format
+        str: Generated commentary in plain text format
     """
     try:
         # Get OpenAI client
@@ -38,7 +38,19 @@ def generate_commentary(df: pd.DataFrame, metrics: Dict[str, Union[float, int]])
         source_distribution = metrics['source_distribution']
         
         # Create prompt for OpenAI
-        prompt = f"""Analyze the following sales pipeline data and provide a concise executive summary:
+        prompt = f"""You are an experienced Revenue Operations Data Analyst.
+
+IMPORTANT FORMATTING RULES - FOLLOW THESE EXACTLY:
+1. Use ONLY plain text - no markdown, no formatting, no italics
+2. Start each point with a bullet point (•)
+3. Write in clear, complete sentences
+4. Focus on business impact
+5. Keep it concise and actionable
+6. Do not include any timestamps or dates
+7. Do not use any special characters or formatting
+8. Write exactly 3-4 bullet points, no more and no less
+
+Now analyze this sales pipeline data and provide a concise executive summary:
 
 Key Metrics:
 - Total Pipeline: ${metrics['total_pipeline']:,.2f}
@@ -53,31 +65,24 @@ Stage Distribution:
 Source Distribution:
 {source_distribution}
 
-Please provide a brief executive summary (3-4 bullet points) that highlights:
-1. The most important pipeline metrics and their implications
-2. Key areas of concern or risks
-3. Notable trends in the pipeline
-
-Use bullet points (•) and keep the tone professional and concise. Focus on actionable insights.
-Do not include separate sections or headings."""
+Focus your analysis on:
+- Key pipeline metrics and their business impact
+- Areas needing attention
+- Notable trends"""
 
         # Generate commentary using OpenAI
         response = client.chat.completions.create(
             model="gpt-4-turbo-preview",
             messages=[
-                {"role": "system", "content": "You are a sales analytics expert providing clear, concise insights. Keep the format simple and consistent."},
+                {"role": "system", "content": "You are a sales analytics expert. Provide clear insights in plain text only, with no special formatting or characters."},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.7,
             max_tokens=300
         )
         
-        # Extract and format the commentary
+        # Extract the commentary and ensure it's plain text
         commentary = response.choices[0].message.content
-        
-        # Add timestamp
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        commentary = f"*Generated on {timestamp}*\n\n{commentary}"
         
         return commentary
         

@@ -154,36 +154,21 @@ with tab1:
                 st.error(f"Error generating insights: {str(e)}")
                 st.session_state.commentary = "Unable to generate insights at this time."
     
-    # Display the commentary with consistent styling
+    # Display the commentary with minimal styling
     st.markdown("""
         <style>
-        .executive-summary {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        .simple-summary {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             line-height: 1.6;
             padding: 1em;
-            background-color: #f8f9fa;
-            border-radius: 4px;
-        }
-        .executive-summary ul {
-            list-style-type: none;
-            padding-left: 0;
-            margin-top: 1em;
-        }
-        .executive-summary li {
-            margin-bottom: 1em;
-            padding-left: 1.5em;
-            position: relative;
-        }
-        .executive-summary li:before {
-            content: "•";
-            position: absolute;
-            left: 0;
-            color: #1f77b4;
+            background-color: white;
+            border: 1px solid #e1e4e8;
+            border-radius: 6px;
         }
         </style>
     """, unsafe_allow_html=True)
     
-    st.markdown(f'<div class="executive-summary">{st.session_state.commentary}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="simple-summary">{st.session_state.commentary}</div>', unsafe_allow_html=True)
     
     # Display pipeline by stage
     st.subheader("Pipeline by Stage")
