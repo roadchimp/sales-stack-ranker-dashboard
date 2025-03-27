@@ -99,9 +99,6 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 with tab1:
     st.header("Sales Pipeline Overview")
     
-    # Get metrics
-    metrics = get_pipeline_metrics(df)
-    
     # Display metrics in columns
     col1, col2, col3 = st.columns(3)
     
@@ -147,7 +144,7 @@ with tab2:
 
 # Pipeline Analysis Tab
 with tab3:
-    display_pipeline_analysis_tab(df)
+    display_pipeline_analysis_tab(df, metrics)
 
 # Source Analysis Tab
 with tab4:
