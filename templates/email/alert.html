@@ -57,7 +57,7 @@
     <div class="alert-card">
         <div class="alert-value">
             {% if alert_type == 'pipeline_drop' %}
-                ${{ "{:,.0f}".format(alert_data.current_value) }}
+                ${{ "{:,.0f}".format(alert_data.current_value|default(0)) }}
             {% elif alert_type == 'aging_opportunities' %}
                 {{ alert_data.count }} opportunities
             {% elif alert_type == 'rep_performance' %}
@@ -79,11 +79,11 @@
         <h3>Alert Threshold</h3>
         <p>
             {% if alert_type == 'pipeline_drop' %}
-                Pipeline has dropped below ${{ "{:,.0f}".format(threshold) }}
+                Pipeline has dropped below ${{ "{:,.0f}".format(threshold|default(0)) }}
             {% elif alert_type == 'aging_opportunities' %}
                 {{ threshold }} days
             {% elif alert_type == 'rep_performance' %}
-                {{ "{:.0%}".format(threshold) }} of target
+                {{ "{:.0%}".format(threshold|default(0)) }} of target
             {% endif %}
         </p>
     </div>
@@ -92,14 +92,14 @@
         <h3>Additional Details</h3>
         <ul>
             {% if alert_type == 'pipeline_drop' %}
-                <li><strong>Previous Value:</strong> ${{ "{:,.0f}".format(alert_data.previous_value) }}</li>
-                <li><strong>Drop Percentage:</strong> {{ "{:.1f}%".format(alert_data.drop_percentage) }}</li>
+                <li><strong>Previous Value:</strong> ${{ "{:,.0f}".format(alert_data.previous_value|default(0)) }}</li>
+                <li><strong>Drop Percentage:</strong> {{ "{:.1f}%".format(alert_data.drop_percentage|default(0)) }}</li>
             {% elif alert_type == 'aging_opportunities' %}
                 <li><strong>Total Stage 0:</strong> {{ alert_data.total_stage0 }} opportunities</li>
-                <li><strong>Average Age:</strong> {{ "{:.1f}".format(alert_data.avg_age) }} days</li>
+                <li><strong>Average Age:</strong> {{ "{:.1f}".format(alert_data.avg_age|default(0)) }} days</li>
             {% elif alert_type == 'rep_performance' %}
                 <li><strong>Affected Reps:</strong> {{ ", ".join(alert_data.reps) }}</li>
-                <li><strong>Minimum Performance:</strong> {{ "{:.1%}".format(alert_data.min_performance) }}</li>
+                <li><strong>Minimum Performance:</strong> {{ "{:.1%}".format(alert_data.min_performance|default(0)) }}</li>
             {% endif %}
         </ul>
     </div>

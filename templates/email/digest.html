@@ -63,27 +63,27 @@
 
     <h2>Key Metrics</h2>
     <div class="metric-card">
-        <div class="metric-value">${{ "{:,.0f}".format(metrics.total_pipeline) }}</div>
+        <div class="metric-value">${{ "{:,.0f}".format(metrics.total_pipeline|default(0)) }}</div>
         <div class="metric-label">Total Pipeline</div>
     </div>
     <div class="metric-card">
-        <div class="metric-value">${{ "{:,.0f}".format(metrics.qualified_pipeline) }}</div>
+        <div class="metric-value">${{ "{:,.0f}".format(metrics.qualified_pipeline|default(0)) }}</div>
         <div class="metric-label">Qualified Pipeline</div>
     </div>
     <div class="metric-card">
-        <div class="metric-value">${{ "{:,.0f}".format(metrics.late_stage_amount) }}</div>
+        <div class="metric-value">${{ "{:,.0f}".format(metrics.late_stage_amount|default(0)) }}</div>
         <div class="metric-label">Late Stage Pipeline</div>
     </div>
     <div class="metric-card">
-        <div class="metric-value">{{ "{:.1%}".format(metrics.win_rate) }}</div>
+        <div class="metric-value">{{ "{:.1%}".format(metrics.win_rate|default(0)) }}</div>
         <div class="metric-label">Win Rate</div>
     </div>
     <div class="metric-card">
-        <div class="metric-value">${{ "{:,.0f}".format(metrics.avg_deal_size) }}</div>
+        <div class="metric-value">${{ "{:,.0f}".format(metrics.avg_deal_size|default(0)) }}</div>
         <div class="metric-label">Average Deal Size</div>
     </div>
     <div class="metric-card">
-        <div class="metric-value">{{ "{:.1f}".format(metrics.pipeline_velocity) }} days</div>
+        <div class="metric-value">{{ "{:.1f}".format(metrics.pipeline_velocity|default(0)) }} days</div>
         <div class="metric-label">Pipeline Velocity</div>
     </div>
 
@@ -98,12 +98,12 @@
             </tr>
         </thead>
         <tbody>
-            {% for _, row in rep_performance.iterrows() %}
+            {% for row in rep_performance %}
             <tr>
                 <td>{{ row['Sales Rep'] }}</td>
-                <td>${{ "{:,.0f}".format(row['Qualified Pipeline']) }}</td>
-                <td>${{ "{:,.0f}".format(row['Target']) }}</td>
-                <td>{{ "{:.1f}%".format(row['Percent to Plan']) }}</td>
+                <td>${{ "{:,.0f}".format(row.get('Qualified Pipeline', 0)|default(0)) }}</td>
+                <td>${{ "{:,.0f}".format(row.get('Target', 0)|default(0)) }}</td>
+                <td>{{ "{:.1f}%".format(row.get('PercentToPlan', 0)|default(0)) }}</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -111,7 +111,7 @@
 
     <h2>Pipeline Health</h2>
     <div class="metric-card">
-        <div class="metric-value">{{ "{:.1f}".format(pipeline_health.avg_stage_0_age) }} days</div>
+        <div class="metric-value">{{ "{:.1f}".format(pipeline_health.avg_stage_0_age|default(0)) }} days</div>
         <div class="metric-label">Average Stage 0 Age</div>
     </div>
     <div class="metric-card">

@@ -100,19 +100,19 @@ def send_digest(metrics, rep_performance, pipeline_health, date_range, recipient
     
     # Format metrics for display
     formatted_metrics = {
-        'total_pipeline': metrics['total_pipeline'],
-        'qualified_pipeline': metrics['qualified_pipeline'],
-        'late_stage_amount': metrics['late_stage_amount'],
-        'win_rate': metrics['win_rate'],
-        'avg_deal_size': metrics['avg_deal_size'],
-        'pipeline_velocity': metrics['pipeline_velocity']
+        'total_pipeline': float(metrics.get('total_pipeline') or 0),
+        'qualified_pipeline': float(metrics.get('qualified_pipeline') or 0),
+        'late_stage_amount': float(metrics.get('late_stage_amount') or 0),
+        'win_rate': float(metrics.get('win_rate') or 0),
+        'avg_deal_size': float(metrics.get('avg_deal_size') or 0),
+        'pipeline_velocity': float(metrics.get('pipeline_velocity') or 0)
     }
     
     # Format rep performance
     rep_performance['PercentToPlan'] = rep_performance['PercentToPlan'].round(1)
     
     # Format pipeline health
-    pipeline_health['avg_stage_0_age'] = round(pipeline_health['avg_stage_0_age'], 1)
+    pipeline_health['avg_stage_0_age'] = round(float(pipeline_health.get('avg_stage_0_age') or 0), 1)
     
     # Generate HTML content
     html_content = template.render(
@@ -137,26 +137,28 @@ def send_alert(alert_type, alert_data, threshold, recipients=None):
     # Format alert data based on type
     if alert_type == 'pipeline_drop':
         formatted_data = {
-            'current_value': alert_data['current_value'],
-            'previous_value': alert_data['previous_value'],
-            'drop_percentage': alert_data['drop_percentage']
+            'current_value': float(alert_data.get('current_value') or 0),
+            'previous_value': float(alert_data.get('previous_value') or 0),
+            'drop_percentage': float(alert_data.get('drop_percentage') or 0)
         }
         subject = "Pipeline Drop Alert"
     elif alert_type == 'aging_opportunities':
         formatted_data = {
-            'count': alert_data['count'],
-            'total_stage0': alert_data['total_stage0'],
-            'avg_age': alert_data['avg_age']
+            'count': int(alert_data.get('count') or 0),
+            'total_stage0': int(alert_data.get('total_stage0') or 0),
+            'avg_age': float(alert_data.get('avg_age') or 0)
         }
         subject = "Aging Opportunities Alert"
     else:  # rep_performance
         formatted_data = {
-            'count': alert_data['count'],
-            'reps': alert_data['reps'],
-            'min_performance': alert_data['min_performance']
+            'count': int(alert_data.get('count') or 0),
+            'reps': alert_data.get('reps') if alert_data.get('reps') is not None else [],
+            'min_performance': float(alert_data.get('min_performance') or 0)
         }
         subject = "Rep Performance Alert"
     
+    threshold = float(threshold or 0)
+
     # Generate HTML content
     html_content = template.render(
         alert_type=alert_type,
