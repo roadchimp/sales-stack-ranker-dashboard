@@ -6,15 +6,26 @@ import pandas as pd
 from typing import Dict, Union
 from openai import OpenAI
 from datetime import datetime
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 def get_openai_client():
-    """Get OpenAI client with API key from Streamlit secrets."""
-    if 'openai' not in st.secrets:
-        raise ValueError("OpenAI API key not found in Streamlit secrets")
+    """Get OpenAI client with API key from environment variables or Streamlit secrets."""
+    api_key = None
     
-    api_key = st.secrets['openai']['OPENAI_API_KEY']
+    # First try to get API key from environment variables (for local development)
+    api_key = os.getenv('OPENAI_API_KEY')
+    
+    # If not found in environment, try Streamlit secrets (for cloud deployment)
+    if not api_key and 'openai' in st.secrets:
+        api_key = st.secrets['openai']['OPENAI_API_KEY']
+    
+    # Validate the API key
     if not api_key or api_key == "your_openai_api_key_here":
-        raise ValueError("Please configure your OpenAI API key in Streamlit secrets")
+        raise ValueError("Please configure your OpenAI API key in environment variables (.env file) or Streamlit secrets")
     
     return OpenAI(api_key=api_key)
 

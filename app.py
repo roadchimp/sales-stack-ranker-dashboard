@@ -155,6 +155,8 @@ with tab1:
     # AI Commentary Section
     st.subheader("Executive Summary")
     
+
+    
     # Add a refresh button
     if st.button("Refresh Insights"):
         st.session_state.commentary = None
@@ -169,21 +171,10 @@ with tab1:
                 st.error(f"Error generating insights: {str(e)}")
                 st.session_state.commentary = "Unable to generate insights at this time."
     
-    # Display the commentary with minimal styling
-    st.markdown("""
-        <style>
-        .simple-summary {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            line-height: 1.6;
-            padding: 1em;
-            background-color: white;
-            border: 1px solid #e1e4e8;
-            border-radius: 6px;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-    
+    # Display the commentary using global CSS styling
     st.markdown(f'<div class="simple-summary">{st.session_state.commentary}</div>', unsafe_allow_html=True)
+    
+
     
     # Display pipeline by stage
     st.subheader("Pipeline by Stage")

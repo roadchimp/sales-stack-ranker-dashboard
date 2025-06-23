@@ -4,26 +4,22 @@ Email control component for Sales Stack Ranker dashboard.
 import streamlit as st
 from datetime import datetime, timedelta
 import pandas as pd
-from utils.email_utils import send_digest, send_alert, test_email_connection
+import os
+from dotenv import load_dotenv
+from utils.email_utils import send_digest, send_alert, test_email_connection, get_email_config
 from utils.data_loader import load_data
 from utils.metrics_calculator import get_pipeline_metrics
 
+# Load environment variables
+load_dotenv()
+
 def validate_email_config():
-    """Validate email configuration in Streamlit secrets."""
-    if 'email' not in st.secrets:
-        return False, "Email configuration not found in Streamlit secrets"
-    
-    config = st.secrets['email']
-    required_fields = ['smtp_server', 'smtp_port', 'smtp_username', 'smtp_password', 'email_from', 'email_to']
-    
-    missing_fields = [field for field in required_fields if field not in config]
-    if missing_fields:
-        return False, f"Missing required fields: {', '.join(missing_fields)}"
-    
-    if not config['email_to']:
-        return False, "No email recipients configured"
-    
-    return True, "Email configuration is valid"
+    """Validate email configuration from environment variables or Streamlit secrets."""
+    try:
+        config = get_email_config()
+        return True, "Email configuration is valid"
+    except ValueError as e:
+        return False, str(e)
 
 def display_email_controls():
     """Display email control panel in Streamlit."""
@@ -31,8 +27,25 @@ def display_email_controls():
     
     # Email Configuration Section
     with st.expander("Email Configuration", expanded=True):
-        st.info("Configure email settings in Streamlit Cloud Secrets")
-        st.code("""
+        st.info("Configure email settings in .env file (local) or Streamlit Cloud Secrets (deployment)")
+        
+        # Show both configuration methods
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("**Local Development (.env file):**")
+            st.code("""
+SMTP_SERVER=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=your_email@gmail.com
+SMTP_PASSWORD=your_app_specific_password
+EMAIL_FROM=your_email@gmail.com
+EMAIL_TO=recipient1@example.com,recipient2@example.com
+            """)
+        
+        with col2:
+            st.markdown("**Streamlit Cloud Secrets:**")
+            st.code("""
 [email]
 smtp_server = "smtp.gmail.com"
 smtp_port = 587
@@ -40,7 +53,7 @@ smtp_username = "your_email@gmail.com"
 smtp_password = "your_app_specific_password"
 email_from = "your_email@gmail.com"
 email_to = ["recipient1@example.com", "recipient2@example.com"]
-        """)
+            """)
         
         # Validate configuration
         is_valid, validation_message = validate_email_config()
@@ -50,15 +63,18 @@ email_to = ["recipient1@example.com", "recipient2@example.com"]
             st.success("✅ Email configuration is valid")
             
             # Display current configuration (without password)
-            email_config = st.secrets['email']
-            st.markdown("**Current Configuration:**")
-            st.json({
-                "SMTP Server": email_config.get('smtp_server', 'Not set'),
-                "SMTP Port": email_config.get('smtp_port', 'Not set'),
-                "SMTP Username": email_config.get('smtp_username', 'Not set'),
-                "Email From": email_config.get('email_from', 'Not set'),
-                "Email To": email_config.get('email_to', 'Not set')
-            })
+            try:
+                email_config = get_email_config()
+                st.markdown("**Current Configuration:**")
+                st.json({
+                    "SMTP Server": email_config.get('smtp_server', 'Not set'),
+                    "SMTP Port": email_config.get('smtp_port', 'Not set'),
+                    "SMTP Username": email_config.get('smtp_username', 'Not set'),
+                    "Email From": email_config.get('email_from', 'Not set'),
+                    "Email To": email_config.get('email_to', 'Not set')
+                })
+            except Exception as e:
+                st.error(f"Error displaying configuration: {str(e)}")
             
             # Test Connection Button
             if st.button("Test Email Connection"):

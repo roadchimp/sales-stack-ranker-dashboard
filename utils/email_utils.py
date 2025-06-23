@@ -9,21 +9,41 @@ from datetime import datetime
 import os
 from pathlib import Path
 import jinja2
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 def get_email_config():
-    """Get email configuration from Streamlit secrets."""
-    if 'email' not in st.secrets:
-        raise ValueError("Email configuration not found in Streamlit secrets")
+    """Get email configuration from environment variables or Streamlit secrets."""
+    config = {}
     
-    config = st.secrets['email']
-    return {
-        'smtp_server': config.get('smtp_server'),
-        'smtp_port': config.get('smtp_port'),
-        'smtp_username': config.get('smtp_username'),
-        'smtp_password': config.get('smtp_password'),
-        'email_from': config.get('email_from'),
-        'email_to': config.get('email_to', [])
-    }
+    # First try to get configuration from environment variables (for local development)
+    config['smtp_server'] = os.getenv('SMTP_SERVER')
+    config['smtp_port'] = int(os.getenv('SMTP_PORT', 587))
+    config['smtp_username'] = os.getenv('SMTP_USERNAME')
+    config['smtp_password'] = os.getenv('SMTP_PASSWORD')
+    config['email_from'] = os.getenv('EMAIL_FROM')
+    email_to_str = os.getenv('EMAIL_TO', '')
+    config['email_to'] = [email.strip() for email in email_to_str.split(',') if email.strip()]
+    
+    # If environment variables are not set, try Streamlit secrets (for cloud deployment)
+    if not config['smtp_server'] and 'email' in st.secrets:
+        secrets_config = st.secrets['email']
+        config = {
+            'smtp_server': secrets_config.get('smtp_server'),
+            'smtp_port': secrets_config.get('smtp_port'),
+            'smtp_username': secrets_config.get('smtp_username'),
+            'smtp_password': secrets_config.get('smtp_password'),
+            'email_from': secrets_config.get('email_from'),
+            'email_to': secrets_config.get('email_to', [])
+        }
+    
+    # Validate configuration
+    if not config['smtp_server']:
+        raise ValueError("Email configuration not found in environment variables or Streamlit secrets")
+    
+    return config
 
 def test_email_connection():
     """Test the email connection using the configured settings."""

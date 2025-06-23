@@ -1,64 +1,116 @@
-/* Base styles */
+/* 
+styles/custom.css
+*/
+
+/* --- THEME-INDEPENDENT STYLES --- */
 .main {
     padding: 1rem;
 }
 
-/* Dark mode styles */
-[data-theme="dark"] .stMetric {
-    background-color: rgba(255, 255, 255, 0.1);
-    color: white !important;
+.stApp {
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-[data-theme="dark"] .stMetric label {
-    color: rgba(255, 255, 255, 0.8) !important;
+.simple-summary {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    line-height: 1.6 !important;
+    padding: 1em !important;
+    border-radius: 6px !important;
+    margin: 1rem 0 !important;
 }
 
-[data-theme="dark"] .stMetric [data-testid="stMetricValue"] {
-    color: white !important;
+/* --- LIGHT THEME --- */
+
+/* Default text for all headers and paragraphs in light mode */
+h1, h2, h3, h4, h5, h6, p {
+    color: #262730 !important;
 }
 
-[data-theme="dark"] .stMetric [data-testid="stMetricDelta"] {
-    color: rgba(255, 255, 255, 0.8) !important;
-}
-
-/* Light mode styles */
-[data-theme="light"] .stMetric {
-    background-color: #f0f2f6;
-    color: #0e1117 !important;
-}
-
-[data-theme="light"] .stMetric label {
-    color: #0e1117 !important;
-}
-
-[data-theme="light"] .stMetric [data-testid="stMetricValue"] {
-    color: #0e1117 !important;
-}
-
-[data-theme="light"] .stMetric [data-testid="stMetricDelta"] {
-    color: #0e1117 !important;
-}
-
-/* Common metric styles */
-.stMetric {
-    padding: 0.5rem;
+/* Metric styles for light mode */
+[data-testid="stMetric"] {
+    background-color: rgba(28, 131, 225, 0.05);
+    padding: 1rem;
     border-radius: 0.5rem;
-    margin: 0.25rem 0;
-    width: 100%;
-    box-sizing: border-box;
+    margin: 0.5rem 0;
+    border: 1px solid rgba(28, 131, 225, 0.1);
 }
 
-.stMetric > div[data-testid="metric-container"] {
-    width: 100%;
+[data-testid="stMetricLabel"] {
+    color: #262730 !important;
 }
 
-.stMetric label {
-    font-size: clamp(0.8rem, 2vw, 1rem);
-    white-space: normal !important;
+[data-testid="stMetricValue"] {
+    color: #0e1117 !important;
 }
 
-.stMetric .css-1xarl3l {
-    font-size: clamp(1.2rem, 4vw, 1.8rem);
+[data-testid="stMetricDelta"] {
+    color: #555555 !important;
+}
+
+/* AI Commentary styles for light mode */
+.simple-summary {
+    background-color: white !important;
+    border: 1px solid #e1e4e8 !important;
+    color: #262626 !important;
+}
+
+/* Force color on all paragraphs and list items within the summary */
+.simple-summary p,
+.simple-summary li {
+    color: #262626 !important;
+}
+
+
+/* --- DARK THEME --- */
+/* This single block overrides the light theme defaults when dark mode is active */
+[data-theme="dark"] {
+    /* Default text for all headers and paragraphs in dark mode */
+    h1, h2, h3, h4, h5, h6, p {
+        color: rgba(255, 255, 255, 0.9) !important;
+    }
+
+    /* Metric styles for dark mode */
+    [data-testid="stMetric"] {
+        background-color: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    [data-testid="stMetricLabel"] {
+        color: rgba(255, 255, 255, 0.8) !important;
+    }
+    
+    [data-testid="stMetricValue"] {
+        color: rgba(255, 255, 255, 0.95) !important;
+    }
+    
+    [data-testid="stMetricDelta"] {
+        color: rgba(255, 255, 255, 0.7) !important;
+    }
+
+    /* AI Commentary styles for dark mode */
+    .simple-summary {
+        background-color: rgba(255, 255, 255, 0.05) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        color: rgba(255, 255, 255, 0.9) !important;
+    }
+
+    /* Force color on all paragraphs and list items within the summary for dark mode */
+    .simple-summary p,
+    .simple-summary li {
+        color: rgba(255, 255, 255, 0.9) !important;
+    }
+}
+
+/* Tab styling */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 1rem;
+}
+
+.stTabs [data-baseweb="tab"] {
+    height: 3rem;
+    padding: 0 1rem;
+    background-color: rgba(28, 131, 225, 0.05);
+    border-radius: 0.5rem;
 }
 
 /* Responsive table styling */
@@ -106,56 +158,51 @@
     }
 }
 
-/* General styles */
-.stApp {
-    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+/* Use Streamlit's CSS variables approach - this is more reliable */
+.stApp[data-theme="dark"] .simple-summary,
+.stApp[theme="dark"] .simple-summary,
+[data-theme="dark"] .simple-summary,
+[theme="dark"] .simple-summary {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: rgba(255, 255, 255, 0.9) !important;
 }
 
-/* Metric styling */
-[data-testid="stMetric"] {
-    background-color: rgba(28, 131, 225, 0.05);
-    padding: 1rem;
-    border-radius: 0.5rem;
-    margin: 0.5rem 0;
+/* Target Streamlit's main container classes for dark mode */
+.css-1d391kg[data-theme="dark"] .simple-summary,
+.css-k1vhr4[data-theme="dark"] .simple-summary,
+.main[data-theme="dark"] .simple-summary {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: rgba(255, 255, 255, 0.9) !important;
 }
 
-[data-testid="stMetric"] > div {
-    width: 100%;
-}
-
-[data-testid="stMetricLabel"] {
-    font-size: 1rem !important;
-    font-weight: 600 !important;
-    color: rgb(49, 51, 63) !important;
-}
-
-[data-testid="stMetricValue"] {
-    font-size: 1.8rem !important;
-    font-weight: 700 !important;
-    color: rgb(49, 51, 63) !important;
-}
-
-[data-testid="stMetricDelta"] {
-    font-size: 0.9rem !important;
-    font-weight: 500 !important;
-}
-
-/* Tab styling */
-.stTabs [data-baseweb="tab-list"] {
-    gap: 1rem;
-}
-
-.stTabs [data-baseweb="tab"] {
-    height: 3rem;
-    padding: 0 1rem;
-    background-color: rgba(28, 131, 225, 0.05);
-    border-radius: 0.5rem;
-}
-
-/* Dark mode adjustments */
+/* System dark mode preference */
 @media (prefers-color-scheme: dark) {
-    [data-testid="stMetricLabel"],
-    [data-testid="stMetricValue"] {
-        color: rgba(250, 250, 250, 0.9) !important;
+    .simple-summary {
+        background-color: rgba(255, 255, 255, 0.05) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        color: rgba(255, 255, 255, 0.9) !important;
+    }
+}
+
+/* Override back to light mode when explicitly light */
+@media (prefers-color-scheme: light) {
+    .simple-summary {
+        background-color: white !important;
+        border: 1px solid #e1e4e8 !important;
+        color: #262626 !important;
+    }
+}
+
+/* Force dark text in light mode - additional specificity */
+.simple-summary {
+    color: #262626 !important;
+}
+
+/* Only override to light text in dark mode */
+@media (prefers-color-scheme: dark) {
+    .simple-summary {
+        color: rgba(255, 255, 255, 0.9) !important;
     }
 } 

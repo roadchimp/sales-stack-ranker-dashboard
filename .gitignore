@@ -6,3 +6,6 @@ __pycache__/
 .env.*
 !.env.example
 .streamlit/secrets.toml
+backups/
+logs/
+
